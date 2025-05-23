@@ -88,9 +88,9 @@ if Code.ensure_loaded?(Igniter) do
       mix_deps = Enum.map(Mix.Project.deps_paths(), fn {dep, path} ->
         {dep, Path.relative_to_cwd(path)}
       end)
-      
+
       igniter_deps = get_deps_from_igniter(igniter)
-      all_deps = mix_deps ++ igniter_deps
+      all_deps = (mix_deps ++ igniter_deps) |> Enum.uniq()
 
       all_option = igniter.args.options[:all]
       list_option = igniter.args.options[:list]
@@ -147,15 +147,15 @@ if Code.ensure_loaded?(Igniter) do
       end)
       |> Enum.map(fn {path, _source} ->
         # Extract package name from deps/package_name/usage-rules.md
-        package_name = 
+        package_name =
           path
           |> String.split("/")
           |> Enum.at(1)
           |> String.to_atom()
-        
+
         # Extract package path from deps/package_name/usage-rules.md
         package_path = Path.dirname(path)
-        
+
         {package_name, package_path}
       end)
       |> Enum.uniq()
@@ -230,7 +230,7 @@ if Code.ensure_loaded?(Igniter) do
 
     defp handle_remove_packages(igniter, provided_packages) do
       file_path = igniter.args.positional[:file]
-      
+
       if !Igniter.exists?(igniter, file_path) do
         Igniter.add_issue(igniter, "File #{file_path} does not exist")
       else
@@ -306,14 +306,17 @@ if Code.ensure_loaded?(Igniter) do
              "\n<-- #{name}-end -->"}
         end)
 
-      contents =
+      package_rules_content = Enum.map_join(package_contents, "\n", &elem(&1, 1))
+
+      full_contents_for_new_file =
         "<-- package-rules-start -->\n" <>
-          Enum.map_join(package_contents, "\n", &elem(&1, 1)) <> "\n<-- package-rules-end -->"
+          package_rules_content <>
+          "\n<-- package-rules-end -->"
 
       Igniter.create_or_update_file(
         igniter,
         igniter.args.positional[:file],
-        contents,
+        full_contents_for_new_file,
         fn source ->
           current_contents = Rewrite.Source.get(source, :content)
 
@@ -348,7 +351,7 @@ if Code.ensure_loaded?(Igniter) do
               _ ->
                 current_contents <>
                   "\n<-- package-rules-start -->\n" <>
-                  contents <>
+                  package_rules_content <>
                   "\n<-- package-rules-end -->\n"
             end
 
@@ -361,7 +364,7 @@ if Code.ensure_loaded?(Igniter) do
       Igniter.update_file(igniter, file_path, fn source ->
         current_contents = Rewrite.Source.get(source, :content)
 
-        new_content = 
+        new_content =
           Enum.reduce(packages_to_remove, current_contents, fn package_name, acc ->
             remove_package_from_content(acc, package_name)
           end)
@@ -380,7 +383,7 @@ if Code.ensure_loaded?(Igniter) do
           # Remove the package section completely, handling newlines properly
           cleaned_prelude = String.trim_trailing(prelude)
           cleaned_postlude = String.trim_leading(postlude)
-          
+
           if cleaned_postlude == "" do
             cleaned_prelude
           else
@@ -403,7 +406,7 @@ if Code.ensure_loaded?(Igniter) do
                 # Remove the entire package-rules section if empty
                 cleaned_prelude = String.trim_trailing(prelude)
                 cleaned_postlude = String.trim_leading(postlude)
-                
+
                 if cleaned_postlude == "" do
                   cleaned_prelude
                 else
@@ -427,7 +430,7 @@ if Code.ensure_loaded?(Igniter) do
       package_start_marker = "<-- #{name}-start -->"
       package_end_marker = "<-- #{name}-end -->"
 
-      case String.split(file_content, [package_start_marker, package_end_marker]) do
+      case String.split(file_content, [package_start_marker, package_end_marker]) |> tap(&IO.inspect(Enum.count(&1))) do
         [_, current_package_content, _] ->
           # Package is present in file, check if content matches
           expected_content = "\n## #{name} usage\n" <> package_rules_content <> "\n"

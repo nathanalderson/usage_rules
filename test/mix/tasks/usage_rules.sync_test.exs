@@ -146,6 +146,78 @@ defmodule Mix.Tasks.UsageRules.SyncTest do
       |> Igniter.compose_task("usage_rules.sync", ["rules.md", "special-pkg"])
       |> assert_creates("rules.md")
     end
+
+    test "does not duplicate content when updating existing file with package rules" do
+      test_project(
+        files: %{
+          "rules.md" => """
+          # Existing Rules
+
+          <-- package-rules-start -->
+          <-- ash-start -->
+          ## ash usage
+          Old ash content
+          <-- ash-end -->
+          <-- package-rules-end -->
+
+          More content.
+          """,
+          "deps/ash_json_api/usage-rules.md" => "AshJsonApi usage rules"
+        }
+      )
+      |> Igniter.compose_task("usage_rules.sync", ["rules.md", "ash_json_api"])
+      |> assert_content_equals("rules.md", """
+      # Existing Rules
+
+      <-- package-rules-start -->
+      <-- ash-start -->
+      ## ash usage
+      Old ash content
+      <-- ash-end -->
+      <-- ash_json_api-start -->
+      ## ash_json_api usage
+      AshJsonApi usage rules
+      <-- ash_json_api-end -->
+      <-- package-rules-end -->
+
+
+      More content.
+      """)
+    end
+
+    test "does not duplicate ash_json_api when adding it twice" do
+      test_project(
+        files: %{
+          "rules.md" => """
+          # Existing Rules
+
+          <-- package-rules-start -->
+          <-- ash_json_api-start -->
+          ## ash_json_api usage
+          Old AshJsonApi content
+          <-- ash_json_api-end -->
+          <-- package-rules-end -->
+
+          More content.
+          """,
+          "deps/ash_json_api/usage-rules.md" => "New AshJsonApi usage rules"
+        }
+      )
+      |> Igniter.compose_task("usage_rules.sync", ["rules.md", "ash_json_api"])
+      |> assert_content_equals("rules.md", """
+      # Existing Rules
+
+      <-- package-rules-start -->
+      <-- ash_json_api-start -->
+      ## ash_json_api usage
+      New AshJsonApi usage rules
+      <-- ash_json_api-end -->
+      <-- package-rules-end -->
+
+
+      More content.
+      """)
+    end
   end
 
   describe "--remove option" do
