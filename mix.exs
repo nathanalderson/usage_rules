@@ -20,9 +20,7 @@ defmodule UsageRules.MixProject do
 
   defp deps do
     [
-      {:igniter, "~> 0.5", optional: true, runtime: false},
-      {:project_with_rules, path: "test/projects/project_with_rules", only: :test},
-      {:project_without_rules, path: "test/projects/project_without_rules", only: :test}
+      {:igniter, "~> 0.5", optional: true, runtime: false}
     ]
   end
 end

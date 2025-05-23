@@ -147,4 +147,193 @@ defmodule Mix.Tasks.UsageRules.SyncTest do
       |> assert_creates("rules.md")
     end
   end
+
+  describe "--remove option" do
+    test "removes specified packages from file" do
+      test_project(
+        files: %{
+          "rules.md" => """
+          # My Rules
+
+          <-- package-rules-start -->
+          <-- ash-start -->
+          ## ash usage
+          Ash framework rules
+          <-- ash-end -->
+          <-- phoenix-start -->
+          ## phoenix usage
+          Phoenix web framework rules
+          <-- phoenix-end -->
+          <-- package-rules-end -->
+
+          More content.
+          """,
+          "deps/ash/usage-rules.md" => "Ash framework rules"
+        }
+      )
+      |> Igniter.compose_task("usage_rules.sync", ["rules.md", "ash", "--remove"])
+      |> assert_content_equals("rules.md", """
+      # My Rules
+
+      <-- package-rules-start -->
+      <-- phoenix-start -->
+      ## phoenix usage
+      Phoenix web framework rules
+      <-- phoenix-end -->
+      <-- package-rules-end -->
+
+      More content.
+      """)
+    end
+
+    test "removes all specified packages" do
+      test_project(
+        files: %{
+          "rules.md" => """
+          <-- package-rules-start -->
+          <-- ash-start -->
+          ## ash usage
+          Ash framework rules
+          <-- ash-end -->
+          <-- phoenix-start -->
+          ## phoenix usage
+          Phoenix web framework rules
+          <-- phoenix-end -->
+          <-- ecto-start -->
+          ## ecto usage
+          Ecto database rules
+          <-- ecto-end -->
+          <-- package-rules-end -->
+          """
+        }
+      )
+      |> Igniter.compose_task("usage_rules.sync", ["rules.md", "ash", "phoenix", "--remove"])
+      |> assert_content_equals("rules.md", """
+      <-- package-rules-start -->
+      <-- ecto-start -->
+      ## ecto usage
+      Ecto database rules
+      <-- ecto-end -->
+      <-- package-rules-end -->
+      """)
+    end
+
+    test "removes entire package-rules section when empty" do
+      test_project(
+        files: %{
+          "rules.md" => """
+          # My Rules
+
+          Some content before.
+
+          <-- package-rules-start -->
+          <-- ash-start -->
+          ## ash usage
+          Ash framework rules
+          <-- ash-end -->
+          <-- package-rules-end -->
+
+          Some content after.
+          """
+        }
+      )
+      |> Igniter.compose_task("usage_rules.sync", ["rules.md", "ash", "--remove"])
+      |> assert_content_equals("rules.md", """
+      # My Rules
+
+      Some content before.
+
+      Some content after.
+      """)
+    end
+
+    test "ignores packages not in file" do
+      test_project(
+        files: %{
+          "rules.md" => """
+          <-- package-rules-start -->
+          <-- ash-start -->
+          ## ash usage
+          Ash framework rules
+          <-- ash-end -->
+          <-- package-rules-end -->
+          """
+        }
+      )
+      |> Igniter.compose_task("usage_rules.sync", ["rules.md", "phoenix", "--remove"])
+      |> assert_content_equals("rules.md", """
+      <-- package-rules-start -->
+      <-- ash-start -->
+      ## ash usage
+      Ash framework rules
+      <-- ash-end -->
+      <-- package-rules-end -->
+      """)
+    end
+
+    test "requires file to exist" do
+      igniter = 
+        test_project()
+        |> Igniter.compose_task("usage_rules.sync", ["nonexistent.md", "ash", "--remove"])
+      
+      case apply_igniter(igniter) do
+        {:error, [error_message]} ->
+          assert String.contains?(error_message, "File nonexistent.md does not exist")
+        result ->
+          flunk("Expected error, got: #{inspect(result)}")
+      end
+    end
+
+    test "requires packages to be specified" do
+      igniter = 
+        test_project(files: %{"rules.md" => "content"})
+        |> Igniter.compose_task("usage_rules.sync", ["rules.md", "--remove"])
+      
+      case apply_igniter(igniter) do
+        {:error, [error_message]} ->
+          assert String.contains?(error_message, "--remove option requires packages to remove")
+        result ->
+          flunk("Expected error, got: #{inspect(result)}")
+      end
+    end
+
+    test "requires file argument" do
+      igniter = 
+        test_project()
+        |> Igniter.compose_task("usage_rules.sync", ["--remove"])
+      
+      case apply_igniter(igniter) do
+        {:error, [error_message]} ->
+          assert String.contains?(error_message, "--remove option requires a file to remove from")
+        result ->
+          flunk("Expected error, got: #{inspect(result)}")
+      end
+    end
+
+    test "cannot be used with --all" do
+      igniter = 
+        test_project()
+        |> Igniter.compose_task("usage_rules.sync", ["rules.md", "ash", "--remove", "--all"])
+      
+      case apply_igniter(igniter) do
+        {:error, [error_message]} ->
+          assert String.contains?(error_message, "Cannot use --remove with --all or --list options")
+        result ->
+          flunk("Expected error, got: #{inspect(result)}")
+      end
+    end
+
+    test "cannot be used with --list" do
+      igniter = 
+        test_project()
+        |> Igniter.compose_task("usage_rules.sync", ["rules.md", "ash", "--remove", "--list"])
+      
+      case apply_igniter(igniter) do
+        {:error, [error_message]} ->
+          assert String.contains?(error_message, "Cannot use --remove with --all or --list options")
+        result ->
+          flunk("Expected error, got: #{inspect(result)}")
+      end
+    end
+  end
 end

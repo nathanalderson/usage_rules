@@ -20,6 +20,7 @@ defmodule Mix.Tasks.UsageRules.Sync.Docs do
 
     * `--all` - Gather usage rules from all dependencies that have them
     * `--list` - List all dependencies with usage rules. If a file is provided, shows status (present, missing, stale)
+    * `--remove` - Remove specified packages from the target file instead of adding them
 
     ## Examples
 
@@ -41,6 +42,11 @@ defmodule Mix.Tasks.UsageRules.Sync.Docs do
     Check status of dependencies against a specific file:
     ```sh
     mix usage_rules.sync rules.md --list
+    ```
+
+    Remove specific packages from a file:
+    ```sh
+    mix usage_rules.sync rules.md ash phoenix --remove
     ```
     """
   end
@@ -67,7 +73,8 @@ if Code.ensure_loaded?(Igniter) do
         ],
         schema: [
           all: :boolean,
-          list: :boolean
+          list: :boolean,
+          remove: :boolean
         ]
       }
     end
@@ -87,20 +94,37 @@ if Code.ensure_loaded?(Igniter) do
 
       all_option = igniter.args.options[:all]
       list_option = igniter.args.options[:list]
+      remove_option = igniter.args.options[:remove]
       provided_packages = igniter.args.positional.packages
 
       cond do
+        # If --remove is used with --all or --list, add error
+        remove_option && (all_option || list_option) ->
+          Igniter.add_issue(igniter, "Cannot use --remove with --all or --list options")
+
+        # If --remove is used without a file, add error
+        remove_option && is_nil(igniter.args.positional[:file]) ->
+          Igniter.add_issue(igniter, "--remove option requires a file to remove from")
+
+        # If --remove is used without packages, add error
+        remove_option && Enum.empty?(provided_packages) ->
+          Igniter.add_issue(igniter, "--remove option requires packages to remove")
+
         # If --list or --all is given and packages list is not empty, add error
         (all_option || list_option) && !Enum.empty?(provided_packages) ->
           Igniter.add_issue(igniter, "Cannot specify packages when using --all or --list options")
 
-        # If no packages are given and neither --list nor --all is set, add error
-        Enum.empty?(provided_packages) && !all_option && !list_option ->
+        # If no packages are given and neither --list nor --all nor --remove is set, add error
+        Enum.empty?(provided_packages) && !all_option && !list_option && !remove_option ->
           add_usage_error(igniter)
 
         # If --all is used without a file, add error
         all_option && is_nil(igniter.args.positional[:file]) ->
           Igniter.add_issue(igniter, "--all option requires a file to write to")
+
+        # Handle --remove option
+        remove_option ->
+          handle_remove_packages(igniter, provided_packages)
 
         # Handle --all option
         all_option ->
@@ -148,6 +172,9 @@ if Code.ensure_loaded?(Igniter) do
 
         mix usage_rules.sync [file] --list
           List packages with usage rules (optionally check status against file)
+
+        mix usage_rules.sync <file> <packages...> --remove
+          Remove specific packages from the target file
       """)
     end
 
@@ -199,6 +226,16 @@ if Code.ensure_loaded?(Igniter) do
         end)
 
       generate_usage_rules_file(igniter, packages)
+    end
+
+    defp handle_remove_packages(igniter, provided_packages) do
+      file_path = igniter.args.positional[:file]
+      
+      if !Igniter.exists?(igniter, file_path) do
+        Igniter.add_issue(igniter, "File #{file_path} does not exist")
+      else
+        remove_packages_from_file(igniter, file_path, provided_packages)
+      end
     end
 
     defp get_packages_with_usage_rules(igniter, all_deps) do
@@ -318,6 +355,72 @@ if Code.ensure_loaded?(Igniter) do
           Rewrite.Source.update(source, :content, new_content)
         end
       )
+    end
+
+    defp remove_packages_from_file(igniter, file_path, packages_to_remove) do
+      Igniter.update_file(igniter, file_path, fn source ->
+        current_contents = Rewrite.Source.get(source, :content)
+
+        new_content = 
+          Enum.reduce(packages_to_remove, current_contents, fn package_name, acc ->
+            remove_package_from_content(acc, package_name)
+          end)
+          |> clean_empty_package_rules_section()
+
+        Rewrite.Source.update(source, :content, new_content)
+      end)
+    end
+
+    defp remove_package_from_content(content, package_name) do
+      package_start_marker = "<-- #{package_name}-start -->\n"
+      package_end_marker = "\n<-- #{package_name}-end -->"
+
+      case String.split(content, [package_start_marker, package_end_marker]) do
+        [prelude, _package_content, postlude] ->
+          # Remove the package section completely, handling newlines properly
+          cleaned_prelude = String.trim_trailing(prelude)
+          cleaned_postlude = String.trim_leading(postlude)
+          
+          if cleaned_postlude == "" do
+            cleaned_prelude
+          else
+            cleaned_prelude <> "\n" <> cleaned_postlude
+          end
+        _ ->
+          # Package not found, return content unchanged
+          content
+      end
+    end
+
+    defp clean_empty_package_rules_section(content) do
+      # Handle both cases: empty section and section with only whitespace
+      case String.split(content, "<-- package-rules-start -->") do
+        [prelude, remainder] ->
+          case String.split(remainder, "<-- package-rules-end -->") do
+            [package_section, postlude] ->
+              # Check if package section is empty or only contains whitespace
+              if String.trim(package_section) == "" do
+                # Remove the entire package-rules section if empty
+                cleaned_prelude = String.trim_trailing(prelude)
+                cleaned_postlude = String.trim_leading(postlude)
+                
+                if cleaned_postlude == "" do
+                  cleaned_prelude
+                else
+                  cleaned_prelude <> "\n\n" <> cleaned_postlude
+                end
+              else
+                # Keep the package-rules section
+                prelude <> "<-- package-rules-start -->" <> package_section <> "<-- package-rules-end -->" <> postlude
+              end
+            _ ->
+              # No end marker found
+              content
+          end
+        _ ->
+          # No package-rules section found
+          content
+      end
     end
 
     defp get_package_status_in_file(name, package_rules_content, file_content) do
