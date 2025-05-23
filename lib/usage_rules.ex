@@ -1,18 +1,5 @@
 defmodule UsageRules do
   @moduledoc """
-  Documentation for `UsageRules`.
+  Tools for gathering usage rules from dependencies for projects.
   """
-
-  @doc """
-  Hello world.
-
-  ## Examples
-
-      iex> UsageRules.hello()
-      :world
-
-  """
-  def hello do
-    :world
-  end
 end
