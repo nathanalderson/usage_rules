@@ -430,7 +430,7 @@ if Code.ensure_loaded?(Igniter) do
       package_start_marker = "<-- #{name}-start -->"
       package_end_marker = "<-- #{name}-end -->"
 
-      case String.split(file_content, [package_start_marker, package_end_marker]) |> tap(&IO.inspect(Enum.count(&1))) do
+      case String.split(file_content, [package_start_marker, package_end_marker]) do
         [_, current_package_content, _] ->
           # Package is present in file, check if content matches
           expected_content = "\n## #{name} usage\n" <> package_rules_content <> "\n"
