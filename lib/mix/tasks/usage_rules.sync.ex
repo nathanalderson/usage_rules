@@ -81,13 +81,23 @@ if Code.ensure_loaded?(Igniter) do
 
     @impl Igniter.Mix.Task
     def igniter(igniter) do
+      igniter =
+        if is_nil(igniter.parent) do
+          igniter
+          |> Igniter.assign(:prompt_on_git_changes?, false)
+          |> Igniter.assign(:quiet_on_no_changes?, true)
+        else
+          igniter
+        end
+
       # Add all usage-rules.md files from deps directory to igniter
       igniter = Igniter.include_glob(igniter, "deps/*/usage-rules.md")
 
       # Get all deps from both Mix.Project.deps_paths and Igniter rewrite sources
-      mix_deps = Enum.map(Mix.Project.deps_paths(), fn {dep, path} ->
-        {dep, Path.relative_to_cwd(path)}
-      end)
+      mix_deps =
+        Enum.map(Mix.Project.deps_paths(), fn {dep, path} ->
+          {dep, Path.relative_to_cwd(path)}
+        end)
 
       igniter_deps = get_deps_from_igniter(igniter)
       all_deps = (mix_deps ++ igniter_deps) |> Enum.uniq()
@@ -344,7 +354,7 @@ if Code.ensure_loaded?(Igniter) do
                   prelude <>
                     "<-- package-rules-start -->\n" <>
                     content <>
-                    "\n<-- package-rules-end -->\n" <>
+                    "\n<-- package-rules-end -->" <>
                     postlude
                 end)
 
@@ -389,6 +399,7 @@ if Code.ensure_loaded?(Igniter) do
           else
             cleaned_prelude <> "\n" <> cleaned_postlude
           end
+
         _ ->
           # Package not found, return content unchanged
           content
@@ -414,12 +425,16 @@ if Code.ensure_loaded?(Igniter) do
                 end
               else
                 # Keep the package-rules section
-                prelude <> "<-- package-rules-start -->" <> package_section <> "<-- package-rules-end -->" <> postlude
+                prelude <>
+                  "<-- package-rules-start -->" <>
+                  package_section <> "<-- package-rules-end -->" <> postlude
               end
+
             _ ->
               # No end marker found
               content
           end
+
         _ ->
           # No package-rules section found
           content

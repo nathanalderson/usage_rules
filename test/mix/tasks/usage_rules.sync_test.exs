@@ -25,14 +25,15 @@ defmodule Mix.Tasks.UsageRules.SyncTest do
     end
 
     test "requires packages when no options given" do
-      igniter = 
+      igniter =
         test_project()
         |> Igniter.compose_task("usage_rules.sync", [])
-      
+
       case apply_igniter(igniter) do
         {:error, [error_message]} ->
           assert String.contains?(error_message, "Usage:")
           assert String.contains?(error_message, "mix usage_rules.sync <file> <packages...>")
+
         result ->
           flunk("Expected error, got: #{inspect(result)}")
       end
@@ -57,26 +58,31 @@ defmodule Mix.Tasks.UsageRules.SyncTest do
     end
 
     test "requires file when using --all option" do
-      igniter = 
+      igniter =
         test_project()
         |> Igniter.compose_task("usage_rules.sync", ["--all"])
-      
+
       case apply_igniter(igniter) do
         {:error, [error_message]} ->
           assert String.contains?(error_message, "--all option requires a file to write to")
+
         result ->
           flunk("Expected error, got: #{inspect(result)}")
       end
     end
 
     test "cannot specify packages with --all option" do
-      igniter = 
+      igniter =
         test_project()
         |> Igniter.compose_task("usage_rules.sync", ["rules.md", "ash", "--all"])
-      
+
       case apply_igniter(igniter) do
         {:error, [error_message]} ->
-          assert String.contains?(error_message, "Cannot specify packages when using --all or --list options")
+          assert String.contains?(
+                   error_message,
+                   "Cannot specify packages when using --all or --list options"
+                 )
+
         result ->
           flunk("Expected error, got: #{inspect(result)}")
       end
@@ -103,13 +109,17 @@ defmodule Mix.Tasks.UsageRules.SyncTest do
     end
 
     test "cannot specify packages with --list option" do
-      igniter = 
+      igniter =
         test_project()
         |> Igniter.compose_task("usage_rules.sync", ["rules.md", "ash", "--list"])
-      
+
       case apply_igniter(igniter) do
         {:error, [error_message]} ->
-          assert String.contains?(error_message, "Cannot specify packages when using --all or --list options")
+          assert String.contains?(
+                   error_message,
+                   "Cannot specify packages when using --all or --list options"
+                 )
+
         result ->
           flunk("Expected error, got: #{inspect(result)}")
       end
@@ -180,7 +190,6 @@ defmodule Mix.Tasks.UsageRules.SyncTest do
       <-- ash_json_api-end -->
       <-- package-rules-end -->
 
-
       More content.
       """)
     end
@@ -213,7 +222,6 @@ defmodule Mix.Tasks.UsageRules.SyncTest do
       New AshJsonApi usage rules
       <-- ash_json_api-end -->
       <-- package-rules-end -->
-
 
       More content.
       """)
@@ -344,65 +352,76 @@ defmodule Mix.Tasks.UsageRules.SyncTest do
     end
 
     test "requires file to exist" do
-      igniter = 
+      igniter =
         test_project()
         |> Igniter.compose_task("usage_rules.sync", ["nonexistent.md", "ash", "--remove"])
-      
+
       case apply_igniter(igniter) do
         {:error, [error_message]} ->
           assert String.contains?(error_message, "File nonexistent.md does not exist")
+
         result ->
           flunk("Expected error, got: #{inspect(result)}")
       end
     end
 
     test "requires packages to be specified" do
-      igniter = 
+      igniter =
         test_project(files: %{"rules.md" => "content"})
         |> Igniter.compose_task("usage_rules.sync", ["rules.md", "--remove"])
-      
+
       case apply_igniter(igniter) do
         {:error, [error_message]} ->
           assert String.contains?(error_message, "--remove option requires packages to remove")
+
         result ->
           flunk("Expected error, got: #{inspect(result)}")
       end
     end
 
     test "requires file argument" do
-      igniter = 
+      igniter =
         test_project()
         |> Igniter.compose_task("usage_rules.sync", ["--remove"])
-      
+
       case apply_igniter(igniter) do
         {:error, [error_message]} ->
           assert String.contains?(error_message, "--remove option requires a file to remove from")
+
         result ->
           flunk("Expected error, got: #{inspect(result)}")
       end
     end
 
     test "cannot be used with --all" do
-      igniter = 
+      igniter =
         test_project()
         |> Igniter.compose_task("usage_rules.sync", ["rules.md", "ash", "--remove", "--all"])
-      
+
       case apply_igniter(igniter) do
         {:error, [error_message]} ->
-          assert String.contains?(error_message, "Cannot use --remove with --all or --list options")
+          assert String.contains?(
+                   error_message,
+                   "Cannot use --remove with --all or --list options"
+                 )
+
         result ->
           flunk("Expected error, got: #{inspect(result)}")
       end
     end
 
     test "cannot be used with --list" do
-      igniter = 
+      igniter =
         test_project()
         |> Igniter.compose_task("usage_rules.sync", ["rules.md", "ash", "--remove", "--list"])
-      
+
       case apply_igniter(igniter) do
         {:error, [error_message]} ->
-          assert String.contains?(error_message, "Cannot use --remove with --all or --list options")
+          assert String.contains?(
+                   error_message,
+                   "Cannot use --remove with --all or --list options"
+                 )
+
         result ->
           flunk("Expected error, got: #{inspect(result)}")
       end

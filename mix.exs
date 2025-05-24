@@ -20,7 +20,7 @@ defmodule UsageRules.MixProject do
 
   defp deps do
     [
-      {:igniter, "~> 0.5", optional: true, runtime: false}
+      {:igniter, path: "../../ash/igniter", optional: true, runtime: false}
     ]
   end
 end
