@@ -241,10 +241,10 @@ if Code.ensure_loaded?(Igniter) do
     defp handle_remove_packages(igniter, provided_packages) do
       file_path = igniter.args.positional[:file]
 
-      if !Igniter.exists?(igniter, file_path) do
-        Igniter.add_issue(igniter, "File #{file_path} does not exist")
-      else
+      if Igniter.exists?(igniter, file_path) do
         remove_packages_from_file(igniter, file_path, provided_packages)
+      else
+        Igniter.add_issue(igniter, "File #{file_path} does not exist")
       end
     end
 
