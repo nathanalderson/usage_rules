@@ -93,9 +93,16 @@ if Code.ensure_loaded?(Igniter) do
       # Add all usage-rules.md files from deps directory to igniter
       igniter = Igniter.include_glob(igniter, "deps/*/usage-rules.md")
 
+      top_level_deps =
+        Mix.Project.get().project()[:deps] |> Enum.map(&elem(&1, 0))
+
       # Get all deps from both Mix.Project.deps_paths and Igniter rewrite sources
       mix_deps =
-        Enum.map(Mix.Project.deps_paths(), fn {dep, path} ->
+        Mix.Project.deps_paths()
+        |> Enum.filter(fn {dep, _path} ->
+          dep in top_level_deps
+        end)
+        |> Enum.map(fn {dep, path} ->
           {dep, Path.relative_to_cwd(path)}
         end)
 
@@ -151,24 +158,28 @@ if Code.ensure_loaded?(Igniter) do
     end
 
     defp get_deps_from_igniter(igniter) do
-      igniter.rewrite.sources
-      |> Enum.filter(fn {path, _source} ->
-        String.match?(path, ~r|^deps/[^/]+/usage-rules\.md$|)
-      end)
-      |> Enum.map(fn {path, _source} ->
-        # Extract package name from deps/package_name/usage-rules.md
-        package_name =
-          path
-          |> String.split("/")
-          |> Enum.at(1)
-          |> String.to_atom()
+      if igniter.assigns[:test_mode?] do
+        igniter.rewrite.sources
+        |> Enum.filter(fn {path, _source} ->
+          String.match?(path, ~r|^deps/[^/]+/usage-rules\.md$|)
+        end)
+        |> Enum.map(fn {path, _source} ->
+          # Extract package name from deps/package_name/usage-rules.md
+          package_name =
+            path
+            |> String.split("/")
+            |> Enum.at(1)
+            |> String.to_atom()
 
-        # Extract package path from deps/package_name/usage-rules.md
-        package_path = Path.dirname(path)
+          # Extract package path from deps/package_name/usage-rules.md
+          package_path = Path.dirname(path)
 
-        {package_name, package_path}
-      end)
-      |> Enum.uniq()
+          {package_name, package_path}
+        end)
+        |> Enum.uniq()
+      else
+        []
+      end
     end
 
     defp add_usage_error(igniter) do
