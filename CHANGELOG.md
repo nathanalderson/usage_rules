@@ -5,6 +5,15 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## v0.1.3 (2025-05-24)
+
+
+
+
+### Bug Fixes:
+
+* update package url in docs & hex
+
 ## v0.1.2 (2025-05-24)
 
 
