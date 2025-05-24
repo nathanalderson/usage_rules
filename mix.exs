@@ -6,7 +6,7 @@ defmodule UsageRules.MixProject do
   A dev tool for Elixir projects to gather LLM usage rules from dependencies
   """
 
-  @source_url "https://github.com/ash-project/ash_graphql"
+  @source_url "https://github.com/ash-project/ash_usage_rules"
 
   def project do
     [
