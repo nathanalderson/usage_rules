@@ -1,6 +1,7 @@
 defmodule UsageRules.MixProject do
   use Mix.Project
 
+  @version "0.1.0"
   @description """
   A dev tool for Elixir projects to gather LLM usage rules from dependencies
   """
@@ -10,7 +11,7 @@ defmodule UsageRules.MixProject do
   def project do
     [
       app: :usage_rules,
-      version: "0.1.0",
+      version: @version,
       elixir: "~> 1.18",
       package: package(),
       aliases: aliases(),
@@ -30,8 +31,7 @@ defmodule UsageRules.MixProject do
       name: :usage_rules,
       licenses: ["MIT"],
       maintainers: "Zach Daniel",
-      files: ~w(lib .formatter.exs mix.exs README* LICENSE*
-      CHANGELOG* documentation),
+      files: ~w(lib .formatter.exs mix.exs README* LICENSE* CHANGELOG*),
       links: %{
         "GitHub" => @source_url,
         "Discord" => "https://discord.gg/HTHRaaVPUc",
@@ -45,7 +45,7 @@ defmodule UsageRules.MixProject do
   defp docs do
     [
       main: "readme",
-      # source_ref: "v#{@version}",
+      source_ref: "v#{@version}",
       extra_section: "GUIDES",
       extras: [
         {"README.md", title: "Home"}
@@ -90,7 +90,7 @@ defmodule UsageRules.MixProject do
       {:credo, ">= 0.0.0", only: [:dev, :test], runtime: false},
       {:dialyxir, ">= 0.0.0", only: [:dev, :test], runtime: false},
       {:sobelow, ">= 0.0.0", only: [:dev, :test], runtime: false},
-      {:git_ops, "~> 2.5", only: [:dev, :test]}
+      {:git_ops, "~> 2.0", only: [:dev]}
     ]
   end
 end
