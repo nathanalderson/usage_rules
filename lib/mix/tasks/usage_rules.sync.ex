@@ -330,9 +330,9 @@ if Code.ensure_loaded?(Igniter) do
       package_rules_content = Enum.map_join(package_contents, "\n", &elem(&1, 1))
 
       full_contents_for_new_file =
-        "<-- package-rules-start -->\n" <>
+        "<-- usage-rules-start -->\n" <>
           package_rules_content <>
-          "\n<-- package-rules-end -->"
+          "\n<-- usage-rules-end -->"
 
       Igniter.create_or_update_file(
         igniter,
@@ -343,8 +343,8 @@ if Code.ensure_loaded?(Igniter) do
 
           new_content =
             case String.split(current_contents, [
-                   "<-- package-rules-start -->\n",
-                   "\n<-- package-rules-end -->"
+                   "<-- usage-rules-start -->\n",
+                   "\n<-- usage-rules-end -->"
                  ]) do
               [prelude, current_packages_contents, postlude] ->
                 Enum.reduce(package_contents, current_packages_contents, fn {name,
@@ -363,17 +363,17 @@ if Code.ensure_loaded?(Igniter) do
                 end)
                 |> then(fn content ->
                   prelude <>
-                    "<-- package-rules-start -->\n" <>
+                    "<-- usage-rules-start -->\n" <>
                     content <>
-                    "\n<-- package-rules-end -->" <>
+                    "\n<-- usage-rules-end -->" <>
                     postlude
                 end)
 
               _ ->
                 current_contents <>
-                  "\n<-- package-rules-start -->\n" <>
+                  "\n<-- usage-rules-start -->\n" <>
                   package_rules_content <>
-                  "\n<-- package-rules-end -->\n"
+                  "\n<-- usage-rules-end -->\n"
             end
 
           Rewrite.Source.update(source, :content, new_content)
@@ -419,13 +419,13 @@ if Code.ensure_loaded?(Igniter) do
 
     defp clean_empty_package_rules_section(content) do
       # Handle both cases: empty section and section with only whitespace
-      case String.split(content, "<-- package-rules-start -->") do
+      case String.split(content, "<-- usage-rules-start -->") do
         [prelude, remainder] ->
-          case String.split(remainder, "<-- package-rules-end -->") do
+          case String.split(remainder, "<-- usage-rules-end -->") do
             [package_section, postlude] ->
               # Check if package section is empty or only contains whitespace
               if String.trim(package_section) == "" do
-                # Remove the entire package-rules section if empty
+                # Remove the entire usage-rules section if empty
                 cleaned_prelude = String.trim_trailing(prelude)
                 cleaned_postlude = String.trim_leading(postlude)
 
@@ -435,10 +435,10 @@ if Code.ensure_loaded?(Igniter) do
                   cleaned_prelude <> "\n\n" <> cleaned_postlude
                 end
               else
-                # Keep the package-rules section
+                # Keep the usage-rules section
                 prelude <>
-                  "<-- package-rules-start -->" <>
-                  package_section <> "<-- package-rules-end -->" <> postlude
+                  "<-- usage-rules-start -->" <>
+                  package_section <> "<-- usage-rules-end -->" <> postlude
               end
 
             _ ->
@@ -447,7 +447,7 @@ if Code.ensure_loaded?(Igniter) do
           end
 
         _ ->
-          # No package-rules section found
+          # No usage-rules section found
           content
       end
     end

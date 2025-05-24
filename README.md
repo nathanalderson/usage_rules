@@ -4,6 +4,10 @@
 
 You'll note this package itself doesn't have a usage-rules.md. Its a simple tool that likely would not benefit from having a usage-rules.md file.
 
+## For Package Authors
+
+Even if you don't want to use LLMs, its very possible that your users will, and they will often come to you with hallucinations from their LLMs and try to get your help with it. Writing a `usage-rules.md` file is a great way to stop this sort of thing 😁
+
 ## Key Features
 
 1. **Dependency Rules Collection**: Automatically discovers and collects usage rules from dependencies that provide `usage-rules.md` files in their package directory

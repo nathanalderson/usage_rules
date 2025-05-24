@@ -163,12 +163,12 @@ defmodule Mix.Tasks.UsageRules.SyncTest do
           "rules.md" => """
           # Existing Rules
 
-          <-- package-rules-start -->
+          <-- usage-rules-start -->
           <-- ash-start -->
           ## ash usage
           Old ash content
           <-- ash-end -->
-          <-- package-rules-end -->
+          <-- usage-rules-end -->
 
           More content.
           """,
@@ -179,7 +179,7 @@ defmodule Mix.Tasks.UsageRules.SyncTest do
       |> assert_content_equals("rules.md", """
       # Existing Rules
 
-      <-- package-rules-start -->
+      <-- usage-rules-start -->
       <-- ash-start -->
       ## ash usage
       Old ash content
@@ -188,7 +188,7 @@ defmodule Mix.Tasks.UsageRules.SyncTest do
       ## ash_json_api usage
       AshJsonApi usage rules
       <-- ash_json_api-end -->
-      <-- package-rules-end -->
+      <-- usage-rules-end -->
 
       More content.
       """)
@@ -200,12 +200,12 @@ defmodule Mix.Tasks.UsageRules.SyncTest do
           "rules.md" => """
           # Existing Rules
 
-          <-- package-rules-start -->
+          <-- usage-rules-start -->
           <-- ash_json_api-start -->
           ## ash_json_api usage
           Old AshJsonApi content
           <-- ash_json_api-end -->
-          <-- package-rules-end -->
+          <-- usage-rules-end -->
 
           More content.
           """,
@@ -216,12 +216,12 @@ defmodule Mix.Tasks.UsageRules.SyncTest do
       |> assert_content_equals("rules.md", """
       # Existing Rules
 
-      <-- package-rules-start -->
+      <-- usage-rules-start -->
       <-- ash_json_api-start -->
       ## ash_json_api usage
       New AshJsonApi usage rules
       <-- ash_json_api-end -->
-      <-- package-rules-end -->
+      <-- usage-rules-end -->
 
       More content.
       """)
@@ -235,7 +235,7 @@ defmodule Mix.Tasks.UsageRules.SyncTest do
           "rules.md" => """
           # My Rules
 
-          <-- package-rules-start -->
+          <-- usage-rules-start -->
           <-- ash-start -->
           ## ash usage
           Ash framework rules
@@ -244,7 +244,7 @@ defmodule Mix.Tasks.UsageRules.SyncTest do
           ## phoenix usage
           Phoenix web framework rules
           <-- phoenix-end -->
-          <-- package-rules-end -->
+          <-- usage-rules-end -->
 
           More content.
           """,
@@ -255,12 +255,12 @@ defmodule Mix.Tasks.UsageRules.SyncTest do
       |> assert_content_equals("rules.md", """
       # My Rules
 
-      <-- package-rules-start -->
+      <-- usage-rules-start -->
       <-- phoenix-start -->
       ## phoenix usage
       Phoenix web framework rules
       <-- phoenix-end -->
-      <-- package-rules-end -->
+      <-- usage-rules-end -->
 
       More content.
       """)
@@ -270,7 +270,7 @@ defmodule Mix.Tasks.UsageRules.SyncTest do
       test_project(
         files: %{
           "rules.md" => """
-          <-- package-rules-start -->
+          <-- usage-rules-start -->
           <-- ash-start -->
           ## ash usage
           Ash framework rules
@@ -283,22 +283,22 @@ defmodule Mix.Tasks.UsageRules.SyncTest do
           ## ecto usage
           Ecto database rules
           <-- ecto-end -->
-          <-- package-rules-end -->
+          <-- usage-rules-end -->
           """
         }
       )
       |> Igniter.compose_task("usage_rules.sync", ["rules.md", "ash", "phoenix", "--remove"])
       |> assert_content_equals("rules.md", """
-      <-- package-rules-start -->
+      <-- usage-rules-start -->
       <-- ecto-start -->
       ## ecto usage
       Ecto database rules
       <-- ecto-end -->
-      <-- package-rules-end -->
+      <-- usage-rules-end -->
       """)
     end
 
-    test "removes entire package-rules section when empty" do
+    test "removes entire usage-rules section when empty" do
       test_project(
         files: %{
           "rules.md" => """
@@ -306,12 +306,12 @@ defmodule Mix.Tasks.UsageRules.SyncTest do
 
           Some content before.
 
-          <-- package-rules-start -->
+          <-- usage-rules-start -->
           <-- ash-start -->
           ## ash usage
           Ash framework rules
           <-- ash-end -->
-          <-- package-rules-end -->
+          <-- usage-rules-end -->
 
           Some content after.
           """
@@ -331,23 +331,23 @@ defmodule Mix.Tasks.UsageRules.SyncTest do
       test_project(
         files: %{
           "rules.md" => """
-          <-- package-rules-start -->
+          <-- usage-rules-start -->
           <-- ash-start -->
           ## ash usage
           Ash framework rules
           <-- ash-end -->
-          <-- package-rules-end -->
+          <-- usage-rules-end -->
           """
         }
       )
       |> Igniter.compose_task("usage_rules.sync", ["rules.md", "phoenix", "--remove"])
       |> assert_content_equals("rules.md", """
-      <-- package-rules-start -->
+      <-- usage-rules-start -->
       <-- ash-start -->
       ## ash usage
       Ash framework rules
       <-- ash-end -->
-      <-- package-rules-end -->
+      <-- usage-rules-end -->
       """)
     end
 
