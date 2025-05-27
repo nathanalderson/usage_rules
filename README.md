@@ -4,6 +4,8 @@
 
 You'll note this package itself doesn't have a usage-rules.md. Its a simple tool that likely would not benefit from having a usage-rules.md file.
 
+`usage-rules.md` is not an existing standard, rather it is a community initiative that may evolve over time as adoption grows and feedback is gathered. We encourage experimentation and welcome input on how to make this approach more useful for the broader Elixir ecosystem.
+
 ## For Package Authors
 
 Even if you don't want to use LLMs, its very possible that your users will, and they will often come to you with hallucinations from their LLMs and try to get your help with it. Writing a `usage-rules.md` file is a great way to stop this sort of thing 😁
