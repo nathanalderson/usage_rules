@@ -8,7 +8,7 @@ defmodule Mix.Tasks.UsageRules.Sync.Docs do
 
   @spec example() :: String.t()
   def example do
-    "mix usage_rules.sync rules.md ash ash_postgres phoenix"
+    "mix usage_rules.sync CLAUDE.md --all --link-to-folder deps"
   end
 
   @spec long_doc() :: String.t()
@@ -33,7 +33,7 @@ defmodule Mix.Tasks.UsageRules.Sync.Docs do
 
     Gather all dependencies with usage rules:
     ```sh
-    mix usage_rules.sync rules.md --all
+    mix usage_rules.sync CLAUDE.md --all
     ```
 
     List all dependencies with usage rules:
@@ -43,37 +43,42 @@ defmodule Mix.Tasks.UsageRules.Sync.Docs do
 
     Check status of dependencies against a specific file:
     ```sh
-    mix usage_rules.sync rules.md --list
+    mix usage_rules.sync CLAUDE.md --list
     ```
 
     Remove specific packages from a file:
     ```sh
-    mix usage_rules.sync rules.md ash phoenix --remove
+    mix usage_rules.sync CLAUDE.md ash phoenix --remove
     ```
 
     Save usage rules to individual files in a folder with markdown links:
     ```sh
-    mix usage_rules.sync rules.md ash phoenix --link-to-folder rules
+    mix usage_rules.sync CLAUDE.md ash phoenix --link-to-folder rules
     ```
 
     Save usage rules with @-style links:
     ```sh
-    mix usage_rules.sync rules.md ash phoenix --link-to-folder rules --link-style at
+    mix usage_rules.sync CLAUDE.md ash phoenix --link-to-folder rules --link-style at
+    ```
+
+    Link directly to deps files without copying:
+    ```sh
+    mix usage_rules.sync CLAUDE.md ash phoenix --link-to-folder deps
     ```
 
     Combine all dependencies with folder links:
     ```sh
-    mix usage_rules.sync rules.md --all --link-to-folder docs
+    mix usage_rules.sync CLAUDE.md --all --link-to-folder docs
     ```
 
     Check status of packages using folder links:
     ```sh
-    mix usage_rules.sync rules.md --list --link-to-folder rules
+    mix usage_rules.sync CLAUDE.md --list --link-to-folder rules
     ```
 
     Remove packages and their folder files:
     ```sh
-    mix usage_rules.sync rules.md ash phoenix --remove --link-to-folder rules
+    mix usage_rules.sync CLAUDE.md ash phoenix --remove --link-to-folder rules
     ```
     """
   end
@@ -234,6 +239,9 @@ if Code.ensure_loaded?(Igniter) do
     defp add_usage_error(igniter) do
       Igniter.add_issue(igniter, """
       Usage:
+        mix usage_rules.sync CLAUDE.md --all --link-to-folder deps
+          Standard usage: gather all dependencies and link directly to deps files
+
         mix usage_rules.sync <file> <packages...>
           Combine specific packages' usage rules into the target file
 
@@ -476,36 +484,42 @@ if Code.ensure_loaded?(Igniter) do
            folder_name,
            link_style
          ) do
-      # First, create individual files for each package in the folder
+      # Create individual files for each package in the folder (unless folder is "deps")
       igniter =
-        Enum.reduce(packages, igniter, fn {name, path}, acc ->
-          usage_rules_path = Path.join(path, "usage-rules.md")
+        if folder_name == "deps" do
+          igniter
+        else
+          Enum.reduce(packages, igniter, fn {name, path}, acc ->
+            usage_rules_path = Path.join(path, "usage-rules.md")
 
-          content =
-            case Rewrite.source(acc.rewrite, usage_rules_path) do
-              {:ok, source} -> Rewrite.Source.get(source, :content)
-              {:error, _} -> File.read!(usage_rules_path)
-            end
+            content =
+              case Rewrite.source(acc.rewrite, usage_rules_path) do
+                {:ok, source} -> Rewrite.Source.get(source, :content)
+                {:error, _} -> File.read!(usage_rules_path)
+              end
 
-          package_file_path = Path.join(folder_name, "#{name}.md")
+            package_file_path = Path.join(folder_name, "#{name}.md")
 
-          Igniter.create_or_update_file(
-            acc,
-            package_file_path,
-            content,
-            fn source ->
-              Rewrite.Source.update(source, :content, content)
-            end
-          )
-        end)
+            Igniter.create_or_update_file(
+              acc,
+              package_file_path,
+              content,
+              fn source ->
+                Rewrite.Source.update(source, :content, content)
+              end
+            )
+          end)
+        end
 
       # Then, create the main file with links
       package_contents =
         packages
         |> Enum.map(fn {name, _path} ->
           link_content =
-            case link_style do
-              "at" -> "@#{folder_name}/#{name}.md"
+            case {link_style, folder_name} do
+              {"at", "deps"} -> "@deps/#{name}/usage-rules.md"
+              {"at", _} -> "@#{folder_name}/#{name}.md"
+              {_, "deps"} -> "[#{name} usage rules](deps/#{name}/usage-rules.md)"
               _ -> "[#{name} usage rules](#{folder_name}/#{name}.md)"
             end
 

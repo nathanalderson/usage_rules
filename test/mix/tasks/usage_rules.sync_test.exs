@@ -777,6 +777,94 @@ defmodule Mix.Tasks.UsageRules.SyncTest do
       end
     end
 
+    test "links directly to deps files when folder is 'deps'" do
+      igniter =
+        test_project(
+          files: %{
+            "deps/ash/usage-rules.md" => "Ash framework rules",
+            "deps/phoenix/usage-rules.md" => "Phoenix web framework rules"
+          }
+        )
+        |> Igniter.compose_task("usage_rules.sync", [
+          "rules.md",
+          "ash",
+          "phoenix",
+          "--link-to-folder",
+          "deps"
+        ])
+        |> apply_igniter!()
+
+      # Check that rules.md was created with correct content
+      {:ok, rules_source} = Rewrite.source(igniter.rewrite, "rules.md")
+      rules_content = Rewrite.Source.get(rules_source, :content)
+
+      expected_content =
+        """
+        <-- usage-rules-start -->
+        <-- ash-start -->
+        ## ash usage
+        [ash usage rules](deps/ash/usage-rules.md)
+        <-- ash-end -->
+        <-- phoenix-start -->
+        ## phoenix usage
+        [phoenix usage rules](deps/phoenix/usage-rules.md)
+        <-- phoenix-end -->
+        <-- usage-rules-end -->
+        """
+        |> String.trim_trailing()
+
+      assert rules_content == expected_content
+
+      # Check that individual files were NOT created
+      assert {:error, _} = Rewrite.source(igniter.rewrite, "deps/ash.md")
+      assert {:error, _} = Rewrite.source(igniter.rewrite, "deps/phoenix.md")
+    end
+
+    test "links directly to deps files with @-style when using --link-style at" do
+      igniter =
+        test_project(
+          files: %{
+            "deps/ash/usage-rules.md" => "Ash framework rules",
+            "deps/phoenix/usage-rules.md" => "Phoenix web framework rules"
+          }
+        )
+        |> Igniter.compose_task("usage_rules.sync", [
+          "rules.md",
+          "ash",
+          "phoenix",
+          "--link-to-folder",
+          "deps",
+          "--link-style",
+          "at"
+        ])
+        |> apply_igniter!()
+
+      # Check that rules.md was created with correct content
+      {:ok, rules_source} = Rewrite.source(igniter.rewrite, "rules.md")
+      rules_content = Rewrite.Source.get(rules_source, :content)
+
+      expected_content =
+        """
+        <-- usage-rules-start -->
+        <-- ash-start -->
+        ## ash usage
+        @deps/ash/usage-rules.md
+        <-- ash-end -->
+        <-- phoenix-start -->
+        ## phoenix usage
+        @deps/phoenix/usage-rules.md
+        <-- phoenix-end -->
+        <-- usage-rules-end -->
+        """
+        |> String.trim_trailing()
+
+      assert rules_content == expected_content
+
+      # Check that individual files were NOT created
+      assert {:error, _} = Rewrite.source(igniter.rewrite, "deps/ash.md")
+      assert {:error, _} = Rewrite.source(igniter.rewrite, "deps/phoenix.md")
+    end
+
     test "validates link-style option values" do
       igniter =
         test_project()
