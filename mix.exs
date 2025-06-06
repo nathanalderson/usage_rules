@@ -1,7 +1,7 @@
 defmodule UsageRules.MixProject do
   use Mix.Project
 
-  @version "0.1.5"
+  @version "0.1.6"
   @description """
   A dev tool for Elixir projects to gather LLM usage rules from dependencies
   """
