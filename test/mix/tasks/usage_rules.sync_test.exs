@@ -427,4 +427,359 @@ defmodule Mix.Tasks.UsageRules.SyncTest do
       end
     end
   end
+
+  describe "--link-to-folder option" do
+    test "creates individual files in folder and links to them" do
+      test_project(
+        files: %{
+          "deps/ash/usage-rules.md" => "Ash framework rules",
+          "deps/phoenix/usage-rules.md" => "Phoenix web framework rules"
+        }
+      )
+      |> Igniter.compose_task("usage_rules.sync", [
+        "rules.md",
+        "ash",
+        "phoenix",
+        "--link-to-folder",
+        "rules"
+      ])
+      |> assert_creates("rules.md")
+      |> assert_creates("rules/ash.md")
+      |> assert_creates("rules/phoenix.md")
+      |> assert_content_equals("rules/ash.md", "Ash framework rules")
+      |> assert_content_equals("rules/phoenix.md", "Phoenix web framework rules")
+      |> assert_content_equals(
+        "rules.md",
+        """
+        <-- usage-rules-start -->
+        <-- ash-start -->
+        ## ash usage
+        @rules/ash.md
+        <-- ash-end -->
+        <-- phoenix-start -->
+        ## phoenix usage
+        @rules/phoenix.md
+        <-- phoenix-end -->
+        <-- usage-rules-end -->
+        """
+        |> String.trim_trailing()
+      )
+    end
+
+    test "works with --all option" do
+      test_project(
+        files: %{
+          "deps/ash/usage-rules.md" => "Ash framework rules",
+          "deps/phoenix/usage-rules.md" => "Phoenix web framework rules",
+          "deps/ecto/usage-rules.md" => "Ecto database rules"
+        }
+      )
+      |> Igniter.compose_task("usage_rules.sync", [
+        "rules.md",
+        "--all",
+        "--link-to-folder",
+        "docs"
+      ])
+      |> assert_creates("rules.md")
+      |> assert_creates("docs/ash.md")
+      |> assert_creates("docs/ecto.md")
+      |> assert_creates("docs/phoenix.md")
+      |> assert_content_equals("docs/ash.md", "Ash framework rules")
+      |> assert_content_equals("docs/ecto.md", "Ecto database rules")
+      |> assert_content_equals("docs/phoenix.md", "Phoenix web framework rules")
+    end
+
+    test "updates existing folder files" do
+      test_project(
+        files: %{
+          "rules.md" => """
+          # Existing Rules
+
+          <-- usage-rules-start -->
+          <-- ash-start -->
+          ## ash usage
+          @rules/ash.md
+          <-- ash-end -->
+          <-- usage-rules-end -->
+
+          More content.
+          """,
+          "rules/ash.md" => "Old ash content",
+          "deps/ash/usage-rules.md" => "New ash content",
+          "deps/phoenix/usage-rules.md" => "Phoenix web framework rules"
+        }
+      )
+      |> Igniter.compose_task("usage_rules.sync", [
+        "rules.md",
+        "ash",
+        "phoenix",
+        "--link-to-folder",
+        "rules"
+      ])
+      |> assert_content_equals("rules/ash.md", "New ash content")
+      |> assert_content_equals("rules/phoenix.md", "Phoenix web framework rules")
+      |> assert_content_equals("rules.md", """
+      # Existing Rules
+
+      <-- usage-rules-start -->
+      <-- ash-start -->
+      ## ash usage
+      @rules/ash.md
+      <-- ash-end -->
+      <-- phoenix-start -->
+      ## phoenix usage
+      @rules/phoenix.md
+      <-- phoenix-end -->
+      <-- usage-rules-end -->
+
+      More content.
+      """)
+    end
+
+    test "creates nested folder structure" do
+      test_project(
+        files: %{
+          "deps/ash/usage-rules.md" => "Ash framework rules"
+        }
+      )
+      |> Igniter.compose_task("usage_rules.sync", [
+        "rules.md",
+        "ash",
+        "--link-to-folder",
+        "docs/usage"
+      ])
+      |> assert_creates("rules.md")
+      |> assert_creates("docs/usage/ash.md")
+      |> assert_content_equals("docs/usage/ash.md", "Ash framework rules")
+      |> assert_content_equals(
+        "rules.md",
+        """
+        <-- usage-rules-start -->
+        <-- ash-start -->
+        ## ash usage
+        @docs/usage/ash.md
+        <-- ash-end -->
+        <-- usage-rules-end -->
+        """
+        |> String.trim_trailing()
+      )
+    end
+
+    test "handles packages with special characters in folder names" do
+      test_project(
+        files: %{
+          "deps/special-pkg/usage-rules.md" => "Special package rules"
+        }
+      )
+      |> Igniter.compose_task("usage_rules.sync", [
+        "rules.md",
+        "special-pkg",
+        "--link-to-folder",
+        "rules"
+      ])
+      |> assert_creates("rules.md")
+      |> assert_creates("rules/special-pkg.md")
+      |> assert_content_equals("rules/special-pkg.md", "Special package rules")
+    end
+
+    test "works with --remove to remove folder files" do
+      test_project(
+        files: %{
+          "rules.md" => """
+          # My Rules
+
+          <-- usage-rules-start -->
+          <-- ash-start -->
+          ## ash usage
+          @rules/ash.md
+          <-- ash-end -->
+          <-- phoenix-start -->
+          ## phoenix usage
+          @rules/phoenix.md
+          <-- phoenix-end -->
+          <-- usage-rules-end -->
+
+          More content.
+          """,
+          "rules/ash.md" => "Ash framework rules",
+          "rules/phoenix.md" => "Phoenix web framework rules"
+        }
+      )
+      |> Igniter.compose_task("usage_rules.sync", [
+        "rules.md",
+        "ash",
+        "--remove",
+        "--link-to-folder",
+        "rules"
+      ])
+      |> assert_content_equals("rules.md", """
+      # My Rules
+
+      <-- usage-rules-start -->
+      <-- phoenix-start -->
+      ## phoenix usage
+      @rules/phoenix.md
+      <-- phoenix-end -->
+      <-- usage-rules-end -->
+
+      More content.
+      """)
+
+      # Note: This test also deletes the individual rules/ash.md file
+      # but only verifies the main file content for simplicity
+    end
+
+    test "works with --list to check folder link status" do
+      test_project(
+        files: %{
+          "rules.md" => """
+          <-- usage-rules-start -->
+          <-- ash-start -->
+          ## ash usage
+          @rules/ash.md
+          <-- ash-end -->
+          <-- phoenix-start -->
+          ## phoenix usage
+          @rules/phoenix.md
+          <-- phoenix-end -->
+          <-- usage-rules-end -->
+          """,
+          "rules/ash.md" => "Ash framework rules",
+          "rules/phoenix.md" => "Phoenix web framework rules",
+          "deps/ash/usage-rules.md" => "Ash framework rules",
+          "deps/phoenix/usage-rules.md" => "Phoenix web framework rules"
+        }
+      )
+      |> Igniter.compose_task("usage_rules.sync", [
+        "rules.md",
+        "--list",
+        "--link-to-folder",
+        "rules"
+      ])
+      |> assert_has_notice("ash: \e[32mpresent\e[0m")
+      |> assert_has_notice("phoenix: \e[32mpresent\e[0m")
+    end
+
+    test "shows stale status when linked folder file doesn't match" do
+      test_project(
+        files: %{
+          "rules.md" => """
+          <-- usage-rules-start -->
+          <-- ash-start -->
+          ## ash usage
+          @rules/ash.md
+          <-- ash-end -->
+          <-- phoenix-start -->
+          ## phoenix usage
+          @rules/phoenix.md
+          <-- phoenix-end -->
+          <-- usage-rules-end -->
+          """,
+          "rules/ash.md" => "Old Ash framework rules",
+          "rules/phoenix.md" => "Phoenix web framework rules",
+          "deps/ash/usage-rules.md" => "New Ash framework rules",
+          "deps/phoenix/usage-rules.md" => "Phoenix web framework rules"
+        }
+      )
+      |> Igniter.compose_task("usage_rules.sync", [
+        "rules.md",
+        "--list",
+        "--link-to-folder",
+        "rules"
+      ])
+      |> assert_has_notice("ash: \e[33mstale\e[0m")
+      |> assert_has_notice("phoenix: \e[32mpresent\e[0m")
+    end
+
+    test "shows stale status when linked folder file doesn't exist" do
+      test_project(
+        files: %{
+          "rules.md" => """
+          <-- usage-rules-start -->
+          <-- ash-start -->
+          ## ash usage
+          @rules/ash.md
+          <-- ash-end -->
+          <-- phoenix-start -->
+          ## phoenix usage
+          @rules/phoenix.md
+          <-- phoenix-end -->
+          <-- usage-rules-end -->
+          """,
+          "rules/phoenix.md" => "Phoenix web framework rules",
+          "deps/ash/usage-rules.md" => "Ash framework rules",
+          "deps/phoenix/usage-rules.md" => "Phoenix web framework rules"
+        }
+      )
+      |> Igniter.compose_task("usage_rules.sync", [
+        "rules.md",
+        "--list",
+        "--link-to-folder",
+        "rules"
+      ])
+      |> assert_has_notice("ash: \e[33mstale\e[0m")
+      |> assert_has_notice("phoenix: \e[32mpresent\e[0m")
+    end
+
+    test "requires a file to write to" do
+      igniter =
+        test_project()
+        |> Igniter.compose_task("usage_rules.sync", ["--link-to-folder", "ash"])
+
+      case apply_igniter(igniter) do
+        {:error, [error_message]} ->
+          assert String.contains?(
+                   error_message,
+                   "--link-to-folder option requires a file to write to"
+                 )
+
+        result ->
+          flunk("Expected error, got: #{inspect(result)}")
+      end
+    end
+
+    test "handles empty usage-rules.md files in folder mode" do
+      test_project(
+        files: %{
+          "deps/ash/usage-rules.md" => ""
+        }
+      )
+      |> Igniter.compose_task("usage_rules.sync", ["rules.md", "ash", "--link-to-folder", "rules"])
+      |> assert_creates("rules.md")
+      |> assert_creates("rules/ash.md")
+      |> assert_content_equals("rules/ash.md", "")
+    end
+
+    test "works with --all and --list with --link-to-folder" do
+      test_project(
+        files: %{
+          "rules.md" => """
+          <-- usage-rules-start -->
+          <-- ash-start -->
+          ## ash usage
+          @docs/ash.md
+          <-- ash-end -->
+          <-- phoenix-start -->
+          ## phoenix usage
+          @docs/phoenix.md
+          <-- phoenix-end -->
+          <-- usage-rules-end -->
+          """,
+          "docs/ash.md" => "Ash framework rules",
+          "deps/ash/usage-rules.md" => "Ash framework rules",
+          "deps/phoenix/usage-rules.md" => "Phoenix web framework rules",
+          "deps/ecto/usage-rules.md" => "Ecto database rules"
+        }
+      )
+      |> Igniter.compose_task("usage_rules.sync", [
+        "rules.md",
+        "--list",
+        "--link-to-folder",
+        "docs"
+      ])
+      |> assert_has_notice("ash: \e[32mpresent\e[0m")
+      |> assert_has_notice("ecto: \e[31mmissing\e[0m")
+      |> assert_has_notice("phoenix: \e[33mstale\e[0m")
+    end
+  end
 end

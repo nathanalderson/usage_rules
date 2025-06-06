@@ -21,6 +21,7 @@ defmodule Mix.Tasks.UsageRules.Sync.Docs do
     * `--all` - Gather usage rules from all dependencies that have them
     * `--list` - List all dependencies with usage rules. If a file is provided, shows status (present, missing, stale)
     * `--remove` - Remove specified packages from the target file instead of adding them
+    * `--link-to-folder <folder>` - Save usage rules for each package in separate files within the specified folder and create CLAUDE.md style links
 
     ## Examples
 
@@ -48,6 +49,26 @@ defmodule Mix.Tasks.UsageRules.Sync.Docs do
     ```sh
     mix usage_rules.sync rules.md ash phoenix --remove
     ```
+
+    Save usage rules to individual files in a folder with links to individual files:
+    ```sh
+    mix usage_rules.sync rules.md ash phoenix --link-to-folder rules
+    ```
+
+    Combine all dependencies with folder links with links to individual files:
+    ```sh
+    mix usage_rules.sync rules.md --all --link-to-folder docs
+    ```
+
+    Check status of packages using folder links:
+    ```sh
+    mix usage_rules.sync rules.md --list --link-to-folder rules
+    ```
+
+    Remove packages and their folder files:
+    ```sh
+    mix usage_rules.sync rules.md ash phoenix --remove --link-to-folder rules
+    ```
     """
   end
 end
@@ -74,7 +95,8 @@ if Code.ensure_loaded?(Igniter) do
         schema: [
           all: :boolean,
           list: :boolean,
-          remove: :boolean
+          remove: :boolean,
+          link_to_folder: :string
         ]
       }
     end
@@ -112,6 +134,7 @@ if Code.ensure_loaded?(Igniter) do
       all_option = igniter.args.options[:all]
       list_option = igniter.args.options[:list]
       remove_option = igniter.args.options[:remove]
+      link_to_folder = igniter.args.options[:link_to_folder]
       provided_packages = igniter.args.positional.packages
 
       cond do
@@ -131,29 +154,33 @@ if Code.ensure_loaded?(Igniter) do
         (all_option || list_option) && !Enum.empty?(provided_packages) ->
           Igniter.add_issue(igniter, "Cannot specify packages when using --all or --list options")
 
-        # If no packages are given and neither --list nor --all nor --remove is set, add error
-        Enum.empty?(provided_packages) && !all_option && !list_option && !remove_option ->
-          add_usage_error(igniter)
-
         # If --all is used without a file, add error
         all_option && is_nil(igniter.args.positional[:file]) ->
           Igniter.add_issue(igniter, "--all option requires a file to write to")
 
+        # If --link-to-folder is used without a file, add error
+        link_to_folder && is_nil(igniter.args.positional[:file]) ->
+          Igniter.add_issue(igniter, "--link-to-folder option requires a file to write to")
+
+        # If no packages are given and neither --list nor --all nor --remove is set, add error
+        Enum.empty?(provided_packages) && !all_option && !list_option && !remove_option ->
+          add_usage_error(igniter)
+
         # Handle --remove option
         remove_option ->
-          handle_remove_packages(igniter, provided_packages)
+          handle_remove_packages(igniter, provided_packages, link_to_folder)
 
         # Handle --all option
         all_option ->
-          handle_all_option(igniter, all_deps)
+          handle_all_option(igniter, all_deps, link_to_folder)
 
         # Handle --list option
         list_option ->
-          handle_list_option(igniter, all_deps)
+          handle_list_option(igniter, all_deps, link_to_folder)
 
         # Handle specific packages
         true ->
-          handle_specific_packages(igniter, all_deps, provided_packages)
+          handle_specific_packages(igniter, all_deps, provided_packages, link_to_folder)
       end
     end
 
@@ -196,10 +223,19 @@ if Code.ensure_loaded?(Igniter) do
 
         mix usage_rules.sync <file> <packages...> --remove
           Remove specific packages from the target file
+
+        mix usage_rules.sync <file> <packages...> --link-to-folder <folder>
+          Save usage rules for each package in separate files within the specified folder and create CLAUDE.md style links
+
+        mix usage_rules.sync <file> --list --link-to-folder <folder>
+          List packages with usage rules and check status against folder links
+
+        mix usage_rules.sync <file> <packages...> --remove --link-to-folder <folder>
+          Remove specific packages from the target file and delete their folder files
       """)
     end
 
-    defp handle_all_option(igniter, all_deps) do
+    defp handle_all_option(igniter, all_deps, link_to_folder) do
       all_packages_with_rules = get_packages_with_usage_rules(igniter, all_deps)
 
       igniter
@@ -211,10 +247,10 @@ if Code.ensure_loaded?(Igniter) do
           Igniter.add_notice(acc, "Including usage rules for: #{name}")
         end)
       end)
-      |> generate_usage_rules_file(all_packages_with_rules)
+      |> generate_usage_rules_file(all_packages_with_rules, link_to_folder)
     end
 
-    defp handle_list_option(igniter, all_deps) do
+    defp handle_list_option(igniter, all_deps, link_to_folder) do
       packages_with_rules = get_packages_with_usage_rules(igniter, all_deps)
 
       if Enum.empty?(packages_with_rules) do
@@ -223,14 +259,19 @@ if Code.ensure_loaded?(Igniter) do
         file_path = igniter.args.positional[:file]
 
         if file_path do
-          list_packages_with_file_comparison(igniter, packages_with_rules, file_path)
+          list_packages_with_file_comparison(
+            igniter,
+            packages_with_rules,
+            file_path,
+            link_to_folder
+          )
         else
           list_packages_without_comparison(igniter, packages_with_rules)
         end
       end
     end
 
-    defp handle_specific_packages(igniter, all_deps, provided_packages) do
+    defp handle_specific_packages(igniter, all_deps, provided_packages, link_to_folder) do
       packages =
         all_deps
         |> Enum.filter(fn {name, _path} ->
@@ -246,14 +287,14 @@ if Code.ensure_loaded?(Igniter) do
           end
         end)
 
-      generate_usage_rules_file(igniter, packages)
+      generate_usage_rules_file(igniter, packages, link_to_folder)
     end
 
-    defp handle_remove_packages(igniter, provided_packages) do
+    defp handle_remove_packages(igniter, provided_packages, link_to_folder) do
       file_path = igniter.args.positional[:file]
 
       if Igniter.exists?(igniter, file_path) do
-        remove_packages_from_file(igniter, file_path, provided_packages)
+        remove_packages_from_file(igniter, file_path, provided_packages, link_to_folder)
       else
         Igniter.add_issue(igniter, "File #{file_path} does not exist")
       end
@@ -267,21 +308,33 @@ if Code.ensure_loaded?(Igniter) do
       end)
     end
 
-    defp list_packages_with_file_comparison(igniter, packages_with_rules, file_path) do
+    defp list_packages_with_file_comparison(
+           igniter,
+           packages_with_rules,
+           file_path,
+           link_to_folder
+         ) do
       current_file_content = read_current_file_content(igniter, file_path)
 
       Enum.reduce(packages_with_rules, igniter, fn {name, path}, acc ->
         usage_rules_path = Path.join(path, "usage-rules.md")
 
         package_rules_content =
-          case Rewrite.source(igniter.rewrite, usage_rules_path) do
+          case Rewrite.source(acc.rewrite, usage_rules_path) do
             {:ok, source} -> Rewrite.Source.get(source, :content)
             {:error, _} -> File.read!(usage_rules_path)
           end
 
-        status = get_package_status_in_file(name, package_rules_content, current_file_content)
-        colored_status = colorize_status(status)
-        Igniter.add_notice(acc, "#{name}: #{colored_status}")
+        status =
+          get_package_status_in_file(
+            acc,
+            name,
+            package_rules_content,
+            current_file_content,
+            link_to_folder
+          )
+
+        Igniter.add_notice(acc, "#{name}: #{colorize_status(status)}")
       end)
     end
 
@@ -308,7 +361,15 @@ if Code.ensure_loaded?(Igniter) do
       end
     end
 
-    defp generate_usage_rules_file(igniter, packages) do
+    defp generate_usage_rules_file(igniter, packages, link_to_folder) do
+      if link_to_folder do
+        generate_usage_rules_with_folder_links(igniter, packages, link_to_folder)
+      else
+        generate_usage_rules_inline(igniter, packages)
+      end
+    end
+
+    defp generate_usage_rules_inline(igniter, packages) do
       package_contents =
         packages
         |> Enum.map(fn {name, path} ->
@@ -381,7 +442,112 @@ if Code.ensure_loaded?(Igniter) do
       )
     end
 
-    defp remove_packages_from_file(igniter, file_path, packages_to_remove) do
+    defp generate_usage_rules_with_folder_links(igniter, packages, folder_name) do
+      # First, create individual files for each package in the folder
+      igniter =
+        Enum.reduce(packages, igniter, fn {name, path}, acc ->
+          usage_rules_path = Path.join(path, "usage-rules.md")
+
+          content =
+            case Rewrite.source(acc.rewrite, usage_rules_path) do
+              {:ok, source} -> Rewrite.Source.get(source, :content)
+              {:error, _} -> File.read!(usage_rules_path)
+            end
+
+          package_file_path = Path.join(folder_name, "#{name}.md")
+
+          Igniter.create_or_update_file(
+            acc,
+            package_file_path,
+            content,
+            fn source ->
+              Rewrite.Source.update(source, :content, content)
+            end
+          )
+        end)
+
+      # Then, create the main file with links
+      package_contents =
+        packages
+        |> Enum.map(fn {name, _path} ->
+          {name,
+           "<-- #{name}-start -->\n" <>
+             "## #{name} usage\n" <>
+             "@#{folder_name}/#{name}.md" <>
+             "\n<-- #{name}-end -->"}
+        end)
+
+      package_rules_content = Enum.map_join(package_contents, "\n", &elem(&1, 1))
+
+      full_contents_for_new_file =
+        "<-- usage-rules-start -->\n" <>
+          package_rules_content <>
+          "\n<-- usage-rules-end -->"
+
+      Igniter.create_or_update_file(
+        igniter,
+        igniter.args.positional[:file],
+        full_contents_for_new_file,
+        fn source ->
+          current_contents = Rewrite.Source.get(source, :content)
+
+          new_content =
+            case String.split(current_contents, [
+                   "<-- usage-rules-start -->\n",
+                   "\n<-- usage-rules-end -->"
+                 ]) do
+              [prelude, current_packages_contents, postlude] ->
+                Enum.reduce(package_contents, current_packages_contents, fn {name,
+                                                                             package_content},
+                                                                            acc ->
+                  case String.split(acc, [
+                         "<-- #{name}-start -->\n",
+                         "\n<-- #{name}-end -->"
+                       ]) do
+                    [prelude, _, postlude] ->
+                      prelude <> package_content <> postlude
+
+                    _ ->
+                      acc <> "\n" <> package_content
+                  end
+                end)
+                |> then(fn content ->
+                  prelude <>
+                    "<-- usage-rules-start -->\n" <>
+                    content <>
+                    "\n<-- usage-rules-end -->" <>
+                    postlude
+                end)
+
+              _ ->
+                current_contents <>
+                  "\n<-- usage-rules-start -->\n" <>
+                  package_rules_content <>
+                  "\n<-- usage-rules-end -->\n"
+            end
+
+          Rewrite.Source.update(source, :content, new_content)
+        end
+      )
+    end
+
+    defp remove_packages_from_file(igniter, file_path, packages_to_remove, link_to_folder) do
+      # If using link-to-folder, also remove the individual package files
+      igniter =
+        if link_to_folder do
+          Enum.reduce(packages_to_remove, igniter, fn package_name, acc ->
+            package_file_path = Path.join(link_to_folder, "#{package_name}.md")
+
+            if Igniter.exists?(acc, package_file_path) do
+              Igniter.rm(acc, package_file_path)
+            else
+              acc
+            end
+          end)
+        else
+          igniter
+        end
+
       Igniter.update_file(igniter, file_path, fn source ->
         current_contents = Rewrite.Source.get(source, :content)
 
@@ -452,17 +618,33 @@ if Code.ensure_loaded?(Igniter) do
       end
     end
 
-    defp get_package_status_in_file(name, package_rules_content, file_content) do
+    defp get_package_status_in_file(
+           igniter,
+           name,
+           package_rules_content,
+           file_content,
+           link_to_folder
+         ) do
       package_start_marker = "<-- #{name}-start -->"
       package_end_marker = "<-- #{name}-end -->"
 
       case String.split(file_content, [package_start_marker, package_end_marker]) do
         [_, current_package_content, _] ->
           # Package is present in file, check if content matches
-          expected_content = "\n## #{name} usage\n" <> package_rules_content <> "\n"
+          expected_content =
+            if link_to_folder do
+              "\n## #{name} usage\n@#{link_to_folder}/#{name}.md\n"
+            else
+              "\n## #{name} usage\n" <> package_rules_content <> "\n"
+            end
 
           if String.trim(current_package_content) == String.trim(expected_content) do
-            "present"
+            # If using link-to-folder, also check the linked file exists and matches
+            if link_to_folder do
+              check_linked_file_status(igniter, name, package_rules_content, link_to_folder)
+            else
+              "present"
+            end
           else
             "stale"
           end
@@ -470,6 +652,33 @@ if Code.ensure_loaded?(Igniter) do
         _ ->
           # Package not found in file
           "missing"
+      end
+    end
+
+    defp check_linked_file_status(igniter, name, expected_content, link_to_folder) do
+      linked_file_path = Path.join(link_to_folder, "#{name}.md")
+
+      if Igniter.exists?(igniter, linked_file_path) do
+        actual_content =
+          case Rewrite.source(igniter.rewrite, linked_file_path) do
+            {:ok, source} ->
+              Rewrite.Source.get(source, :content)
+
+            {:error, _} ->
+              if File.exists?(linked_file_path) do
+                File.read!(linked_file_path)
+              else
+                ""
+              end
+          end
+
+        if String.trim(actual_content) == String.trim(expected_content) do
+          "present"
+        else
+          "stale"
+        end
+      else
+        "stale"
       end
     end
 
