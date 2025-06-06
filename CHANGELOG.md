@@ -5,6 +5,15 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## v0.1.4 (2025-06-06)
+
+
+
+
+### Improvements:
+
+* add `--link-to-folder` option
+
 ## v0.1.3 (2025-05-24)
 
 
