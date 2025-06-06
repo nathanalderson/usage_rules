@@ -59,6 +59,112 @@ mix usage_rules.sync rules.md --list
 mix usage_rules.sync rules.md ash --remove
 ```
 
+### Use folder links for better organization
+```sh
+mix usage_rules.sync rules.md ash phoenix --link-to-folder rules
+```
+
+### Use @-style folder links
+```sh
+mix usage_rules.sync rules.md ash phoenix --link-to-folder rules --link-style at
+```
+
+### Gather all dependencies with folder links
+```sh
+mix usage_rules.sync rules.md --all --link-to-folder docs
+```
+
+## Advanced Features
+
+### Folder Links (`--link-to-folder`)
+
+The `--link-to-folder` option provides enhanced organization for managing large sets of usage rules. This feature is particularly valuable when working with Claude AI or other systems that benefit from modular file organization.
+
+**What it does:**
+- Creates individual `.md` files for each package in the specified folder
+- Generates a main file with markdown links (`[package usage rules](folder/package.md)`) by default
+- Can optionally use @-style links (`@folder/package.md`) with `--link-style at`
+- Maintains the same section markers for easy updates and status tracking
+- Works with all other options (`--all`, `--list`, `--remove`)
+
+**Link Style Options:**
+- `--link-style markdown` (default): Creates standard markdown links like `[ash usage rules](docs/ash.md)`
+- `--link-style at`: Creates @-style links like `@docs/ash.md`
+
+**Key Benefits:**
+
+**🤖 Claude AI Integration**
+- With `--link-style at`, Claude can efficiently reference specific package rules using the `@folder/file.md` syntax
+- Avoids hitting Claude's context limits when working with large rule sets
+- Allows Claude to selectively load only relevant rules for the current task
+- Enables better conversation flow by referencing specific documentation files
+
+**📁 Better Organization**
+- Large rule sets become easier to navigate and maintain
+- Individual files can be edited independently
+- Cleaner Git diffs when rules change
+- Modular structure scales well with project growth
+- Standard markdown links work well with any markdown viewer or documentation system
+
+**Example workflows:**
+```sh
+# Create organized rule files with markdown links (default)
+mix usage_rules.sync rules.md ash phoenix --link-to-folder docs
+
+# Create organized rule files with @-style links
+mix usage_rules.sync rules.md ash phoenix --link-to-folder docs --link-style at
+
+# Gather all dependencies with folder organization
+mix usage_rules.sync rules.md --all --link-to-folder docs
+```
+
+**File structure created:**
+```
+docs/
+├── ash.md           # Full Ash usage rules content
+└── phoenix.md       # Full Phoenix usage rules content
+rules.md             # Main file with links
+```
+
+**Main file (`rules.md`) contains (markdown style - default):**
+```markdown
+<-- usage-rules-start -->
+<-- ash-start -->
+## ash usage
+[ash usage rules](docs/ash.md)
+<-- ash-end -->
+<-- phoenix-start -->
+## phoenix usage
+[phoenix usage rules](docs/phoenix.md)
+<-- phoenix-end -->
+<-- usage-rules-end -->
+```
+
+**Or with @-style links (`--link-style at`):**
+```markdown
+<-- usage-rules-start -->
+<-- ash-start -->
+## ash usage
+@docs/ash.md
+<-- ash-end -->
+<-- phoenix-start -->
+## phoenix usage
+@docs/phoenix.md
+<-- phoenix-end -->
+<-- usage-rules-end -->
+```
+
+**Individual files (`docs/ash.md`) contain:**
+```markdown
+# Ash Framework Usage Rules
+
+Use `list_generators` to list available generators when available...
+[Full usage rules content here]
+```
+
+**Working with Claude:**
+When using `--link-style at`, Claude can intelligently load specific package rules by following the `@docs/package.md` links, making your conversations more focused and efficient. The default markdown links work well with standard documentation systems and any markdown viewer.
+
 ## Installation
 
 ### With Igniter

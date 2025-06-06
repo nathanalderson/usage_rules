@@ -21,7 +21,8 @@ defmodule Mix.Tasks.UsageRules.Sync.Docs do
     * `--all` - Gather usage rules from all dependencies that have them
     * `--list` - List all dependencies with usage rules. If a file is provided, shows status (present, missing, stale)
     * `--remove` - Remove specified packages from the target file instead of adding them
-    * `--link-to-folder <folder>` - Save usage rules for each package in separate files within the specified folder and create CLAUDE.md style links
+    * `--link-to-folder <folder>` - Save usage rules for each package in separate files within the specified folder and create links to them
+    * `--link-style <style>` - Style of links to create when using --link-to-folder (markdown|at). Defaults to 'markdown'
 
     ## Examples
 
@@ -50,12 +51,17 @@ defmodule Mix.Tasks.UsageRules.Sync.Docs do
     mix usage_rules.sync rules.md ash phoenix --remove
     ```
 
-    Save usage rules to individual files in a folder with links to individual files:
+    Save usage rules to individual files in a folder with markdown links:
     ```sh
     mix usage_rules.sync rules.md ash phoenix --link-to-folder rules
     ```
 
-    Combine all dependencies with folder links with links to individual files:
+    Save usage rules with @-style links:
+    ```sh
+    mix usage_rules.sync rules.md ash phoenix --link-to-folder rules --link-style at
+    ```
+
+    Combine all dependencies with folder links:
     ```sh
     mix usage_rules.sync rules.md --all --link-to-folder docs
     ```
@@ -96,7 +102,8 @@ if Code.ensure_loaded?(Igniter) do
           all: :boolean,
           list: :boolean,
           remove: :boolean,
-          link_to_folder: :string
+          link_to_folder: :string,
+          link_style: :string
         ]
       }
     end
@@ -135,9 +142,18 @@ if Code.ensure_loaded?(Igniter) do
       list_option = igniter.args.options[:list]
       remove_option = igniter.args.options[:remove]
       link_to_folder = igniter.args.options[:link_to_folder]
+      link_style = igniter.args.options[:link_style] || "markdown"
       provided_packages = igniter.args.positional.packages
 
       cond do
+        # If --link-style is used with invalid value, add error
+        link_style && link_style not in ["markdown", "at"] ->
+          Igniter.add_issue(igniter, "--link-style must be either 'markdown' or 'at'")
+
+        # If --link-style is used without --link-to-folder, add error
+        igniter.args.options[:link_style] && !link_to_folder ->
+          Igniter.add_issue(igniter, "--link-style can only be used with --link-to-folder")
+
         # If --remove is used with --all or --list, add error
         remove_option && (all_option || list_option) ->
           Igniter.add_issue(igniter, "Cannot use --remove with --all or --list options")
@@ -172,7 +188,7 @@ if Code.ensure_loaded?(Igniter) do
 
         # Handle --all option
         all_option ->
-          handle_all_option(igniter, all_deps, link_to_folder)
+          handle_all_option(igniter, all_deps, link_to_folder, link_style)
 
         # Handle --list option
         list_option ->
@@ -180,7 +196,13 @@ if Code.ensure_loaded?(Igniter) do
 
         # Handle specific packages
         true ->
-          handle_specific_packages(igniter, all_deps, provided_packages, link_to_folder)
+          handle_specific_packages(
+            igniter,
+            all_deps,
+            provided_packages,
+            link_to_folder,
+            link_style
+          )
       end
     end
 
@@ -225,7 +247,7 @@ if Code.ensure_loaded?(Igniter) do
           Remove specific packages from the target file
 
         mix usage_rules.sync <file> <packages...> --link-to-folder <folder>
-          Save usage rules for each package in separate files within the specified folder and create CLAUDE.md style links
+          Save usage rules for each package in separate files within the specified folder and create links to them
 
         mix usage_rules.sync <file> --list --link-to-folder <folder>
           List packages with usage rules and check status against folder links
@@ -235,7 +257,7 @@ if Code.ensure_loaded?(Igniter) do
       """)
     end
 
-    defp handle_all_option(igniter, all_deps, link_to_folder) do
+    defp handle_all_option(igniter, all_deps, link_to_folder, link_style) do
       all_packages_with_rules = get_packages_with_usage_rules(igniter, all_deps)
 
       igniter
@@ -247,7 +269,7 @@ if Code.ensure_loaded?(Igniter) do
           Igniter.add_notice(acc, "Including usage rules for: #{name}")
         end)
       end)
-      |> generate_usage_rules_file(all_packages_with_rules, link_to_folder)
+      |> generate_usage_rules_file(all_packages_with_rules, link_to_folder, link_style)
     end
 
     defp handle_list_option(igniter, all_deps, link_to_folder) do
@@ -271,7 +293,13 @@ if Code.ensure_loaded?(Igniter) do
       end
     end
 
-    defp handle_specific_packages(igniter, all_deps, provided_packages, link_to_folder) do
+    defp handle_specific_packages(
+           igniter,
+           all_deps,
+           provided_packages,
+           link_to_folder,
+           link_style
+         ) do
       packages =
         all_deps
         |> Enum.filter(fn {name, _path} ->
@@ -287,7 +315,7 @@ if Code.ensure_loaded?(Igniter) do
           end
         end)
 
-      generate_usage_rules_file(igniter, packages, link_to_folder)
+      generate_usage_rules_file(igniter, packages, link_to_folder, link_style)
     end
 
     defp handle_remove_packages(igniter, provided_packages, link_to_folder) do
@@ -361,9 +389,9 @@ if Code.ensure_loaded?(Igniter) do
       end
     end
 
-    defp generate_usage_rules_file(igniter, packages, link_to_folder) do
+    defp generate_usage_rules_file(igniter, packages, link_to_folder, link_style) do
       if link_to_folder do
-        generate_usage_rules_with_folder_links(igniter, packages, link_to_folder)
+        generate_usage_rules_with_folder_links(igniter, packages, link_to_folder, link_style)
       else
         generate_usage_rules_inline(igniter, packages)
       end
@@ -442,7 +470,12 @@ if Code.ensure_loaded?(Igniter) do
       )
     end
 
-    defp generate_usage_rules_with_folder_links(igniter, packages, folder_name) do
+    defp generate_usage_rules_with_folder_links(
+           igniter,
+           packages,
+           folder_name,
+           link_style
+         ) do
       # First, create individual files for each package in the folder
       igniter =
         Enum.reduce(packages, igniter, fn {name, path}, acc ->
@@ -470,10 +503,16 @@ if Code.ensure_loaded?(Igniter) do
       package_contents =
         packages
         |> Enum.map(fn {name, _path} ->
+          link_content =
+            case link_style do
+              "at" -> "@#{folder_name}/#{name}.md"
+              _ -> "[#{name} usage rules](#{folder_name}/#{name}.md)"
+            end
+
           {name,
            "<-- #{name}-start -->\n" <>
              "## #{name} usage\n" <>
-             "@#{folder_name}/#{name}.md" <>
+             link_content <>
              "\n<-- #{name}-end -->"}
         end)
 

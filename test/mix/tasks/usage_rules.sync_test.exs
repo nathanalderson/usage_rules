@@ -454,11 +454,11 @@ defmodule Mix.Tasks.UsageRules.SyncTest do
         <-- usage-rules-start -->
         <-- ash-start -->
         ## ash usage
-        @rules/ash.md
+        [ash usage rules](rules/ash.md)
         <-- ash-end -->
         <-- phoenix-start -->
         ## phoenix usage
-        @rules/phoenix.md
+        [phoenix usage rules](rules/phoenix.md)
         <-- phoenix-end -->
         <-- usage-rules-end -->
         """
@@ -487,6 +487,45 @@ defmodule Mix.Tasks.UsageRules.SyncTest do
       |> assert_content_equals("docs/ash.md", "Ash framework rules")
       |> assert_content_equals("docs/ecto.md", "Ecto database rules")
       |> assert_content_equals("docs/phoenix.md", "Phoenix web framework rules")
+    end
+
+    test "creates @-style links when explicitly specified" do
+      test_project(
+        files: %{
+          "deps/ash/usage-rules.md" => "Ash framework rules",
+          "deps/phoenix/usage-rules.md" => "Phoenix web framework rules"
+        }
+      )
+      |> Igniter.compose_task("usage_rules.sync", [
+        "rules.md",
+        "ash",
+        "phoenix",
+        "--link-to-folder",
+        "rules",
+        "--link-style",
+        "at"
+      ])
+      |> assert_creates("rules.md")
+      |> assert_creates("rules/ash.md")
+      |> assert_creates("rules/phoenix.md")
+      |> assert_content_equals("rules/ash.md", "Ash framework rules")
+      |> assert_content_equals("rules/phoenix.md", "Phoenix web framework rules")
+      |> assert_content_equals(
+        "rules.md",
+        """
+        <-- usage-rules-start -->
+        <-- ash-start -->
+        ## ash usage
+        @rules/ash.md
+        <-- ash-end -->
+        <-- phoenix-start -->
+        ## phoenix usage
+        @rules/phoenix.md
+        <-- phoenix-end -->
+        <-- usage-rules-end -->
+        """
+        |> String.trim_trailing()
+      )
     end
 
     test "updates existing folder files" do
@@ -524,11 +563,11 @@ defmodule Mix.Tasks.UsageRules.SyncTest do
       <-- usage-rules-start -->
       <-- ash-start -->
       ## ash usage
-      @rules/ash.md
+      [ash usage rules](rules/ash.md)
       <-- ash-end -->
       <-- phoenix-start -->
       ## phoenix usage
-      @rules/phoenix.md
+      [phoenix usage rules](rules/phoenix.md)
       <-- phoenix-end -->
       <-- usage-rules-end -->
 
@@ -557,7 +596,7 @@ defmodule Mix.Tasks.UsageRules.SyncTest do
         <-- usage-rules-start -->
         <-- ash-start -->
         ## ash usage
-        @docs/usage/ash.md
+        [ash usage rules](docs/usage/ash.md)
         <-- ash-end -->
         <-- usage-rules-end -->
         """
@@ -731,6 +770,52 @@ defmodule Mix.Tasks.UsageRules.SyncTest do
           assert String.contains?(
                    error_message,
                    "--link-to-folder option requires a file to write to"
+                 )
+
+        result ->
+          flunk("Expected error, got: #{inspect(result)}")
+      end
+    end
+
+    test "validates link-style option values" do
+      igniter =
+        test_project()
+        |> Igniter.compose_task("usage_rules.sync", [
+          "rules.md",
+          "ash",
+          "--link-to-folder",
+          "rules",
+          "--link-style",
+          "invalid"
+        ])
+
+      case apply_igniter(igniter) do
+        {:error, [error_message]} ->
+          assert String.contains?(
+                   error_message,
+                   "--link-style must be either 'markdown' or 'at'"
+                 )
+
+        result ->
+          flunk("Expected error, got: #{inspect(result)}")
+      end
+    end
+
+    test "requires link-to-folder when using link-style" do
+      igniter =
+        test_project()
+        |> Igniter.compose_task("usage_rules.sync", [
+          "rules.md",
+          "ash",
+          "--link-style",
+          "at"
+        ])
+
+      case apply_igniter(igniter) do
+        {:error, [error_message]} ->
+          assert String.contains?(
+                   error_message,
+                   "--link-style can only be used with --link-to-folder"
                  )
 
         result ->
