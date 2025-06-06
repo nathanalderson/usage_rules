@@ -5,6 +5,15 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## v0.1.5 (2025-06-06)
+
+
+
+
+### Improvements:
+
+* use markdown links by default, allow opting in to `--link-style at`
+
 ## v0.1.4 (2025-06-06)
 
 
