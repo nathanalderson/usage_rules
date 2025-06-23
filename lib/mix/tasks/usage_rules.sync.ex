@@ -418,18 +418,18 @@ if Code.ensure_loaded?(Igniter) do
             end
 
           {name,
-           "<-- #{name}-start -->\n" <>
+           "<!-- #{name}-start -->\n" <>
              "## #{name} usage\n" <>
              content <>
-             "\n<-- #{name}-end -->"}
+             "\n<!-- #{name}-end -->"}
         end)
 
       package_rules_content = Enum.map_join(package_contents, "\n", &elem(&1, 1))
 
       full_contents_for_new_file =
-        "<-- usage-rules-start -->\n" <>
+        "<!-- usage-rules-start -->\n" <>
           package_rules_content <>
-          "\n<-- usage-rules-end -->"
+          "\n<!-- usage-rules-end -->"
 
       Igniter.create_or_update_file(
         igniter,
@@ -440,16 +440,16 @@ if Code.ensure_loaded?(Igniter) do
 
           new_content =
             case String.split(current_contents, [
-                   "<-- usage-rules-start -->\n",
-                   "\n<-- usage-rules-end -->"
+                   "<!-- usage-rules-start -->\n",
+                   "\n<!-- usage-rules-end -->"
                  ]) do
               [prelude, current_packages_contents, postlude] ->
                 Enum.reduce(package_contents, current_packages_contents, fn {name,
                                                                              package_content},
                                                                             acc ->
                   case String.split(acc, [
-                         "<-- #{name}-start -->\n",
-                         "\n<-- #{name}-end -->"
+                         "<!-- #{name}-start -->\n",
+                         "\n<!-- #{name}-end -->"
                        ]) do
                     [prelude, _, postlude] ->
                       prelude <> package_content <> postlude
@@ -460,17 +460,17 @@ if Code.ensure_loaded?(Igniter) do
                 end)
                 |> then(fn content ->
                   prelude <>
-                    "<-- usage-rules-start -->\n" <>
+                    "<!-- usage-rules-start -->\n" <>
                     content <>
-                    "\n<-- usage-rules-end -->" <>
+                    "\n<!-- usage-rules-end -->" <>
                     postlude
                 end)
 
               _ ->
                 current_contents <>
-                  "\n<-- usage-rules-start -->\n" <>
+                  "\n<!-- usage-rules-start -->\n" <>
                   package_rules_content <>
-                  "\n<-- usage-rules-end -->\n"
+                  "\n<!-- usage-rules-end -->\n"
             end
 
           Rewrite.Source.update(source, :content, new_content)
@@ -524,18 +524,18 @@ if Code.ensure_loaded?(Igniter) do
             end
 
           {name,
-           "<-- #{name}-start -->\n" <>
+           "<!-- #{name}-start -->\n" <>
              "## #{name} usage\n" <>
              link_content <>
-             "\n<-- #{name}-end -->"}
+             "\n<!-- #{name}-end -->"}
         end)
 
       package_rules_content = Enum.map_join(package_contents, "\n", &elem(&1, 1))
 
       full_contents_for_new_file =
-        "<-- usage-rules-start -->\n" <>
+        "<!-- usage-rules-start -->\n" <>
           package_rules_content <>
-          "\n<-- usage-rules-end -->"
+          "\n<!-- usage-rules-end -->"
 
       Igniter.create_or_update_file(
         igniter,
@@ -546,16 +546,16 @@ if Code.ensure_loaded?(Igniter) do
 
           new_content =
             case String.split(current_contents, [
-                   "<-- usage-rules-start -->\n",
-                   "\n<-- usage-rules-end -->"
+                   "<!-- usage-rules-start -->\n",
+                   "\n<!-- usage-rules-end -->"
                  ]) do
               [prelude, current_packages_contents, postlude] ->
                 Enum.reduce(package_contents, current_packages_contents, fn {name,
                                                                              package_content},
                                                                             acc ->
                   case String.split(acc, [
-                         "<-- #{name}-start -->\n",
-                         "\n<-- #{name}-end -->"
+                         "<!-- #{name}-start -->\n",
+                         "\n<!-- #{name}-end -->"
                        ]) do
                     [prelude, _, postlude] ->
                       prelude <> package_content <> postlude
@@ -566,17 +566,17 @@ if Code.ensure_loaded?(Igniter) do
                 end)
                 |> then(fn content ->
                   prelude <>
-                    "<-- usage-rules-start -->\n" <>
+                    "<!-- usage-rules-start -->\n" <>
                     content <>
-                    "\n<-- usage-rules-end -->" <>
+                    "\n<!-- usage-rules-end -->" <>
                     postlude
                 end)
 
               _ ->
                 current_contents <>
-                  "\n<-- usage-rules-start -->\n" <>
+                  "\n<!-- usage-rules-start -->\n" <>
                   package_rules_content <>
-                  "\n<-- usage-rules-end -->\n"
+                  "\n<!-- usage-rules-end -->\n"
             end
 
           Rewrite.Source.update(source, :content, new_content)
@@ -615,8 +615,8 @@ if Code.ensure_loaded?(Igniter) do
     end
 
     defp remove_package_from_content(content, package_name) do
-      package_start_marker = "<-- #{package_name}-start -->\n"
-      package_end_marker = "\n<-- #{package_name}-end -->"
+      package_start_marker = "<!-- #{package_name}-start -->\n"
+      package_end_marker = "\n<!-- #{package_name}-end -->"
 
       case String.split(content, [package_start_marker, package_end_marker]) do
         [prelude, _package_content, postlude] ->
@@ -638,9 +638,9 @@ if Code.ensure_loaded?(Igniter) do
 
     defp clean_empty_package_rules_section(content) do
       # Handle both cases: empty section and section with only whitespace
-      case String.split(content, "<-- usage-rules-start -->") do
+      case String.split(content, "<!-- usage-rules-start -->") do
         [prelude, remainder] ->
-          case String.split(remainder, "<-- usage-rules-end -->") do
+          case String.split(remainder, "<!-- usage-rules-end -->") do
             [package_section, postlude] ->
               # Check if package section is empty or only contains whitespace
               if String.trim(package_section) == "" do
@@ -656,8 +656,8 @@ if Code.ensure_loaded?(Igniter) do
               else
                 # Keep the usage-rules section
                 prelude <>
-                  "<-- usage-rules-start -->" <>
-                  package_section <> "<-- usage-rules-end -->" <> postlude
+                  "<!-- usage-rules-start -->" <>
+                  package_section <> "<!-- usage-rules-end -->" <> postlude
               end
 
             _ ->
@@ -678,8 +678,8 @@ if Code.ensure_loaded?(Igniter) do
            file_content,
            link_to_folder
          ) do
-      package_start_marker = "<-- #{name}-start -->"
-      package_end_marker = "<-- #{name}-end -->"
+      package_start_marker = "<!-- #{name}-start -->"
+      package_end_marker = "<!-- #{name}-end -->"
 
       case String.split(file_content, [package_start_marker, package_end_marker]) do
         [_, current_package_content, _] ->

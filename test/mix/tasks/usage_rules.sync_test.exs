@@ -163,12 +163,12 @@ defmodule Mix.Tasks.UsageRules.SyncTest do
           "rules.md" => """
           # Existing Rules
 
-          <-- usage-rules-start -->
-          <-- ash-start -->
+          <!-- usage-rules-start -->
+          <!-- ash-start -->
           ## ash usage
           Old ash content
-          <-- ash-end -->
-          <-- usage-rules-end -->
+          <!-- ash-end -->
+          <!-- usage-rules-end -->
 
           More content.
           """,
@@ -179,16 +179,16 @@ defmodule Mix.Tasks.UsageRules.SyncTest do
       |> assert_content_equals("rules.md", """
       # Existing Rules
 
-      <-- usage-rules-start -->
-      <-- ash-start -->
+      <!-- usage-rules-start -->
+      <!-- ash-start -->
       ## ash usage
       Old ash content
-      <-- ash-end -->
-      <-- ash_json_api-start -->
+      <!-- ash-end -->
+      <!-- ash_json_api-start -->
       ## ash_json_api usage
       AshJsonApi usage rules
-      <-- ash_json_api-end -->
-      <-- usage-rules-end -->
+      <!-- ash_json_api-end -->
+      <!-- usage-rules-end -->
 
       More content.
       """)
@@ -200,12 +200,12 @@ defmodule Mix.Tasks.UsageRules.SyncTest do
           "rules.md" => """
           # Existing Rules
 
-          <-- usage-rules-start -->
-          <-- ash_json_api-start -->
+          <!-- usage-rules-start -->
+          <!-- ash_json_api-start -->
           ## ash_json_api usage
           Old AshJsonApi content
-          <-- ash_json_api-end -->
-          <-- usage-rules-end -->
+          <!-- ash_json_api-end -->
+          <!-- usage-rules-end -->
 
           More content.
           """,
@@ -216,12 +216,12 @@ defmodule Mix.Tasks.UsageRules.SyncTest do
       |> assert_content_equals("rules.md", """
       # Existing Rules
 
-      <-- usage-rules-start -->
-      <-- ash_json_api-start -->
+      <!-- usage-rules-start -->
+      <!-- ash_json_api-start -->
       ## ash_json_api usage
       New AshJsonApi usage rules
-      <-- ash_json_api-end -->
-      <-- usage-rules-end -->
+      <!-- ash_json_api-end -->
+      <!-- usage-rules-end -->
 
       More content.
       """)
@@ -235,16 +235,16 @@ defmodule Mix.Tasks.UsageRules.SyncTest do
           "rules.md" => """
           # My Rules
 
-          <-- usage-rules-start -->
-          <-- ash-start -->
+          <!-- usage-rules-start -->
+          <!-- ash-start -->
           ## ash usage
           Ash framework rules
-          <-- ash-end -->
-          <-- phoenix-start -->
+          <!-- ash-end -->
+          <!-- phoenix-start -->
           ## phoenix usage
           Phoenix web framework rules
-          <-- phoenix-end -->
-          <-- usage-rules-end -->
+          <!-- phoenix-end -->
+          <!-- usage-rules-end -->
 
           More content.
           """,
@@ -255,12 +255,12 @@ defmodule Mix.Tasks.UsageRules.SyncTest do
       |> assert_content_equals("rules.md", """
       # My Rules
 
-      <-- usage-rules-start -->
-      <-- phoenix-start -->
+      <!-- usage-rules-start -->
+      <!-- phoenix-start -->
       ## phoenix usage
       Phoenix web framework rules
-      <-- phoenix-end -->
-      <-- usage-rules-end -->
+      <!-- phoenix-end -->
+      <!-- usage-rules-end -->
 
       More content.
       """)
@@ -270,31 +270,31 @@ defmodule Mix.Tasks.UsageRules.SyncTest do
       test_project(
         files: %{
           "rules.md" => """
-          <-- usage-rules-start -->
-          <-- ash-start -->
+          <!-- usage-rules-start -->
+          <!-- ash-start -->
           ## ash usage
           Ash framework rules
-          <-- ash-end -->
-          <-- phoenix-start -->
+          <!-- ash-end -->
+          <!-- phoenix-start -->
           ## phoenix usage
           Phoenix web framework rules
-          <-- phoenix-end -->
-          <-- ecto-start -->
+          <!-- phoenix-end -->
+          <!-- ecto-start -->
           ## ecto usage
           Ecto database rules
-          <-- ecto-end -->
-          <-- usage-rules-end -->
+          <!-- ecto-end -->
+          <!-- usage-rules-end -->
           """
         }
       )
       |> Igniter.compose_task("usage_rules.sync", ["rules.md", "ash", "phoenix", "--remove"])
       |> assert_content_equals("rules.md", """
-      <-- usage-rules-start -->
-      <-- ecto-start -->
+      <!-- usage-rules-start -->
+      <!-- ecto-start -->
       ## ecto usage
       Ecto database rules
-      <-- ecto-end -->
-      <-- usage-rules-end -->
+      <!-- ecto-end -->
+      <!-- usage-rules-end -->
       """)
     end
 
@@ -306,12 +306,12 @@ defmodule Mix.Tasks.UsageRules.SyncTest do
 
           Some content before.
 
-          <-- usage-rules-start -->
-          <-- ash-start -->
+          <!-- usage-rules-start -->
+          <!-- ash-start -->
           ## ash usage
           Ash framework rules
-          <-- ash-end -->
-          <-- usage-rules-end -->
+          <!-- ash-end -->
+          <!-- usage-rules-end -->
 
           Some content after.
           """
@@ -331,23 +331,23 @@ defmodule Mix.Tasks.UsageRules.SyncTest do
       test_project(
         files: %{
           "rules.md" => """
-          <-- usage-rules-start -->
-          <-- ash-start -->
+          <!-- usage-rules-start -->
+          <!-- ash-start -->
           ## ash usage
           Ash framework rules
-          <-- ash-end -->
-          <-- usage-rules-end -->
+          <!-- ash-end -->
+          <!-- usage-rules-end -->
           """
         }
       )
       |> Igniter.compose_task("usage_rules.sync", ["rules.md", "phoenix", "--remove"])
       |> assert_content_equals("rules.md", """
-      <-- usage-rules-start -->
-      <-- ash-start -->
+      <!-- usage-rules-start -->
+      <!-- ash-start -->
       ## ash usage
       Ash framework rules
-      <-- ash-end -->
-      <-- usage-rules-end -->
+      <!-- ash-end -->
+      <!-- usage-rules-end -->
       """)
     end
 
@@ -451,16 +451,16 @@ defmodule Mix.Tasks.UsageRules.SyncTest do
       |> assert_content_equals(
         "rules.md",
         """
-        <-- usage-rules-start -->
-        <-- ash-start -->
+        <!-- usage-rules-start -->
+        <!-- ash-start -->
         ## ash usage
         [ash usage rules](rules/ash.md)
-        <-- ash-end -->
-        <-- phoenix-start -->
+        <!-- ash-end -->
+        <!-- phoenix-start -->
         ## phoenix usage
         [phoenix usage rules](rules/phoenix.md)
-        <-- phoenix-end -->
-        <-- usage-rules-end -->
+        <!-- phoenix-end -->
+        <!-- usage-rules-end -->
         """
         |> String.trim_trailing()
       )
@@ -513,16 +513,16 @@ defmodule Mix.Tasks.UsageRules.SyncTest do
       |> assert_content_equals(
         "rules.md",
         """
-        <-- usage-rules-start -->
-        <-- ash-start -->
+        <!-- usage-rules-start -->
+        <!-- ash-start -->
         ## ash usage
         @rules/ash.md
-        <-- ash-end -->
-        <-- phoenix-start -->
+        <!-- ash-end -->
+        <!-- phoenix-start -->
         ## phoenix usage
         @rules/phoenix.md
-        <-- phoenix-end -->
-        <-- usage-rules-end -->
+        <!-- phoenix-end -->
+        <!-- usage-rules-end -->
         """
         |> String.trim_trailing()
       )
@@ -534,12 +534,12 @@ defmodule Mix.Tasks.UsageRules.SyncTest do
           "rules.md" => """
           # Existing Rules
 
-          <-- usage-rules-start -->
-          <-- ash-start -->
+          <!-- usage-rules-start -->
+          <!-- ash-start -->
           ## ash usage
           @rules/ash.md
-          <-- ash-end -->
-          <-- usage-rules-end -->
+          <!-- ash-end -->
+          <!-- usage-rules-end -->
 
           More content.
           """,
@@ -560,16 +560,16 @@ defmodule Mix.Tasks.UsageRules.SyncTest do
       |> assert_content_equals("rules.md", """
       # Existing Rules
 
-      <-- usage-rules-start -->
-      <-- ash-start -->
+      <!-- usage-rules-start -->
+      <!-- ash-start -->
       ## ash usage
       [ash usage rules](rules/ash.md)
-      <-- ash-end -->
-      <-- phoenix-start -->
+      <!-- ash-end -->
+      <!-- phoenix-start -->
       ## phoenix usage
       [phoenix usage rules](rules/phoenix.md)
-      <-- phoenix-end -->
-      <-- usage-rules-end -->
+      <!-- phoenix-end -->
+      <!-- usage-rules-end -->
 
       More content.
       """)
@@ -593,12 +593,12 @@ defmodule Mix.Tasks.UsageRules.SyncTest do
       |> assert_content_equals(
         "rules.md",
         """
-        <-- usage-rules-start -->
-        <-- ash-start -->
+        <!-- usage-rules-start -->
+        <!-- ash-start -->
         ## ash usage
         [ash usage rules](docs/usage/ash.md)
-        <-- ash-end -->
-        <-- usage-rules-end -->
+        <!-- ash-end -->
+        <!-- usage-rules-end -->
         """
         |> String.trim_trailing()
       )
@@ -627,16 +627,16 @@ defmodule Mix.Tasks.UsageRules.SyncTest do
           "rules.md" => """
           # My Rules
 
-          <-- usage-rules-start -->
-          <-- ash-start -->
+          <!-- usage-rules-start -->
+          <!-- ash-start -->
           ## ash usage
           @rules/ash.md
-          <-- ash-end -->
-          <-- phoenix-start -->
+          <!-- ash-end -->
+          <!-- phoenix-start -->
           ## phoenix usage
           @rules/phoenix.md
-          <-- phoenix-end -->
-          <-- usage-rules-end -->
+          <!-- phoenix-end -->
+          <!-- usage-rules-end -->
 
           More content.
           """,
@@ -654,12 +654,12 @@ defmodule Mix.Tasks.UsageRules.SyncTest do
       |> assert_content_equals("rules.md", """
       # My Rules
 
-      <-- usage-rules-start -->
-      <-- phoenix-start -->
+      <!-- usage-rules-start -->
+      <!-- phoenix-start -->
       ## phoenix usage
       @rules/phoenix.md
-      <-- phoenix-end -->
-      <-- usage-rules-end -->
+      <!-- phoenix-end -->
+      <!-- usage-rules-end -->
 
       More content.
       """)
@@ -672,16 +672,16 @@ defmodule Mix.Tasks.UsageRules.SyncTest do
       test_project(
         files: %{
           "rules.md" => """
-          <-- usage-rules-start -->
-          <-- ash-start -->
+          <!-- usage-rules-start -->
+          <!-- ash-start -->
           ## ash usage
           @rules/ash.md
-          <-- ash-end -->
-          <-- phoenix-start -->
+          <!-- ash-end -->
+          <!-- phoenix-start -->
           ## phoenix usage
           @rules/phoenix.md
-          <-- phoenix-end -->
-          <-- usage-rules-end -->
+          <!-- phoenix-end -->
+          <!-- usage-rules-end -->
           """,
           "rules/ash.md" => "Ash framework rules",
           "rules/phoenix.md" => "Phoenix web framework rules",
@@ -703,16 +703,16 @@ defmodule Mix.Tasks.UsageRules.SyncTest do
       test_project(
         files: %{
           "rules.md" => """
-          <-- usage-rules-start -->
-          <-- ash-start -->
+          <!-- usage-rules-start -->
+          <!-- ash-start -->
           ## ash usage
           @rules/ash.md
-          <-- ash-end -->
-          <-- phoenix-start -->
+          <!-- ash-end -->
+          <!-- phoenix-start -->
           ## phoenix usage
           @rules/phoenix.md
-          <-- phoenix-end -->
-          <-- usage-rules-end -->
+          <!-- phoenix-end -->
+          <!-- usage-rules-end -->
           """,
           "rules/ash.md" => "Old Ash framework rules",
           "rules/phoenix.md" => "Phoenix web framework rules",
@@ -734,16 +734,16 @@ defmodule Mix.Tasks.UsageRules.SyncTest do
       test_project(
         files: %{
           "rules.md" => """
-          <-- usage-rules-start -->
-          <-- ash-start -->
+          <!-- usage-rules-start -->
+          <!-- ash-start -->
           ## ash usage
           @rules/ash.md
-          <-- ash-end -->
-          <-- phoenix-start -->
+          <!-- ash-end -->
+          <!-- phoenix-start -->
           ## phoenix usage
           @rules/phoenix.md
-          <-- phoenix-end -->
-          <-- usage-rules-end -->
+          <!-- phoenix-end -->
+          <!-- usage-rules-end -->
           """,
           "rules/phoenix.md" => "Phoenix web framework rules",
           "deps/ash/usage-rules.md" => "Ash framework rules",
@@ -800,16 +800,16 @@ defmodule Mix.Tasks.UsageRules.SyncTest do
 
       expected_content =
         """
-        <-- usage-rules-start -->
-        <-- ash-start -->
+        <!-- usage-rules-start -->
+        <!-- ash-start -->
         ## ash usage
         [ash usage rules](deps/ash/usage-rules.md)
-        <-- ash-end -->
-        <-- phoenix-start -->
+        <!-- ash-end -->
+        <!-- phoenix-start -->
         ## phoenix usage
         [phoenix usage rules](deps/phoenix/usage-rules.md)
-        <-- phoenix-end -->
-        <-- usage-rules-end -->
+        <!-- phoenix-end -->
+        <!-- usage-rules-end -->
         """
         |> String.trim_trailing()
 
@@ -845,16 +845,16 @@ defmodule Mix.Tasks.UsageRules.SyncTest do
 
       expected_content =
         """
-        <-- usage-rules-start -->
-        <-- ash-start -->
+        <!-- usage-rules-start -->
+        <!-- ash-start -->
         ## ash usage
         @deps/ash/usage-rules.md
-        <-- ash-end -->
-        <-- phoenix-start -->
+        <!-- ash-end -->
+        <!-- phoenix-start -->
         ## phoenix usage
         @deps/phoenix/usage-rules.md
-        <-- phoenix-end -->
-        <-- usage-rules-end -->
+        <!-- phoenix-end -->
+        <!-- usage-rules-end -->
         """
         |> String.trim_trailing()
 
@@ -927,16 +927,16 @@ defmodule Mix.Tasks.UsageRules.SyncTest do
       test_project(
         files: %{
           "rules.md" => """
-          <-- usage-rules-start -->
-          <-- ash-start -->
+          <!-- usage-rules-start -->
+          <!-- ash-start -->
           ## ash usage
           @docs/ash.md
-          <-- ash-end -->
-          <-- phoenix-start -->
+          <!-- ash-end -->
+          <!-- phoenix-start -->
           ## phoenix usage
           @docs/phoenix.md
-          <-- phoenix-end -->
-          <-- usage-rules-end -->
+          <!-- phoenix-end -->
+          <!-- usage-rules-end -->
           """,
           "docs/ash.md" => "Ash framework rules",
           "deps/ash/usage-rules.md" => "Ash framework rules",
