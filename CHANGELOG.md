@@ -5,6 +5,15 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## v0.1.7 (2025-06-23)
+
+
+
+
+### Bug Fixes:
+
+* usage proper markdown comments by Zach Daniel
+
 ## v0.1.6 (2025-06-06)
 
 
