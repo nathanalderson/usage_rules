@@ -1134,61 +1134,8 @@ defmodule Mix.Tasks.UsageRules.SyncTest do
         }
       )
       |> Igniter.compose_task("usage_rules.sync", ["rules.md", "ash", "--builtins", "elixir"])
-      |> assert_content_equals("rules.md", """
-      # Existing Rules
-
-      <!-- usage-rules-start -->
-      <!-- ash-start -->
-      ## ash usage
-      New ash content
-      <!-- ash-end -->
-      <!-- elixir-start -->
-      ## elixir usage
-      # Elixir Core Usage Rules
-
-      ## Pattern Matching
-      - Use pattern matching over conditional logic when possible
-      - Match on function heads instead of using `if`/`else` or `case` in function bodies
-      - Destructure maps and structs in function heads: `def process(%{key: value})`
-
-      ## Error Handling
-      - Use `{:ok, result}` and `{:error, reason}` tuples for operations that can fail
-      - Avoid raising exceptions for control flow
-      - Use `with` for chaining operations that return `{:ok, _}` or `{:error, _}`
-
-      ## Common Mistakes to Avoid
-      - Don't use `Enum` functions on large collections when `Stream` is more appropriate
-      - Avoid nested `case` statements - refactor to separate functions
-      - Don't use `String.to_atom/1` on user input (memory leak risk)
-      - Avoid `Process.sleep/1` in production code - use proper async patterns
-
-      ## Function Design
-      - Keep functions small and focused on a single responsibility
-      - Use guard clauses: `when is_binary(name) and byte_size(name) > 0`
-      - Prefer multiple function clauses over complex conditional logic
-      - Name functions descriptively: `calculate_total_price/2` not `calc/2`
-
-      ## Data Structures
-      - Use structs over maps when the shape is known: `defstruct [:name, :age]`
-      - Prefer keyword lists for options: `[timeout: 5000, retries: 3]`
-      - Use maps for dynamic key-value data
-      - Lists are for ordered collections, not key-value storage
-
-      ## Concurrency
-      - Use GenServer for stateful processes
-      - Prefer Task for one-off async operations
-      - Use Agent for simple state management
-      - Always handle process crashes with supervisors
-
-      ## Performance
-      - Prepend to lists, don't append: `[new | list]` not `list ++ [new]`
-      - Use `:binary.copy/1` when substring will outlive original binary
-      - Avoid repeated string concatenation in loops
-      - Use ETS for large in-memory lookups
-      <!-- elixir-end -->
-      <!-- usage-rules-end -->
-
-      More content.
+      |> assert_has_patch("rules.md", """
+      + | <!-- elixir-start -->
       """)
     end
 

@@ -23,5 +23,5 @@
 - Use structs over maps when the shape is known: `defstruct [:name, :age]`
 - Prefer keyword lists for options: `[timeout: 5000, retries: 3]`
 - Use maps for dynamic key-value data
-- Lists are for ordered collections, not key-value storage
 - Prefer to prepend to lists `[new | list]` not `list ++ [new]`
+- Lists and enumerables cannot be indexed with brackets, use `List.at/1` or `Enum.at/1` instead.
