@@ -46,7 +46,9 @@ This will create a folder called `rules`, with a file per package that has a `us
 to those from you rules file.
 
 ```sh
-mix usage_rules.sync CLAUDE.md --all --link-to-folder docs
+mix usage_rules.sync CLAUDE.md --all \
+  --link-to-folder docs \
+  --builtins elixir,otp
 ```
 
 #### Using deps folder

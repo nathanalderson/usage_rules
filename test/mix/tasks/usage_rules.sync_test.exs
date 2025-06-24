@@ -955,4 +955,260 @@ defmodule Mix.Tasks.UsageRules.SyncTest do
       |> assert_has_notice("phoenix: \e[33mstale\e[0m")
     end
   end
+
+  describe "--builtins option" do
+    test "includes builtin elixir and otp rules with --all" do
+      test_project(
+        files: %{
+          "deps/ash/usage-rules.md" => "Ash framework rules"
+        }
+      )
+      |> Igniter.compose_task("usage_rules.sync", [
+        "rules.md",
+        "--all",
+        "--builtins",
+        "elixir,otp"
+      ])
+      |> assert_has_notice("Including usage rules for: ash")
+      |> assert_has_notice("Including built-in usage rules for: elixir")
+      |> assert_has_notice("Including built-in usage rules for: otp")
+      |> assert_creates("rules.md")
+    end
+
+    test "includes only specified builtins" do
+      test_project()
+      |> Igniter.compose_task("usage_rules.sync", ["rules.md", "--all", "--builtins", "elixir"])
+      |> assert_has_notice("Including built-in usage rules for: elixir")
+      |> assert_creates("rules.md")
+    end
+
+    test "works with specific packages and builtins" do
+      test_project(
+        files: %{
+          "deps/ash/usage-rules.md" => "Ash framework rules"
+        }
+      )
+      |> Igniter.compose_task("usage_rules.sync", ["rules.md", "ash", "--builtins", "otp"])
+      |> assert_has_notice("Including built-in usage rules for: otp")
+      |> assert_creates("rules.md")
+    end
+
+    test "rejects invalid builtin names" do
+      igniter =
+        test_project()
+        |> Igniter.compose_task("usage_rules.sync", [
+          "rules.md",
+          "--all",
+          "--builtins",
+          "elixir,invalid,otp"
+        ])
+
+      case apply_igniter(igniter) do
+        {:error, [error_message]} ->
+          assert String.contains?(error_message, "Invalid builtins: invalid")
+          assert String.contains?(error_message, "Valid options are: elixir, otp")
+
+        result ->
+          flunk("Expected error, got: #{inspect(result)}")
+      end
+    end
+
+    test "works with --link-to-folder and copies builtin files" do
+      test_project(
+        files: %{
+          "deps/ash/usage-rules.md" => "Ash framework rules"
+        }
+      )
+      |> Igniter.compose_task("usage_rules.sync", [
+        "rules.md",
+        "ash",
+        "--builtins",
+        "elixir,otp",
+        "--link-to-folder",
+        "docs"
+      ])
+      |> assert_creates("rules.md")
+      |> assert_creates("docs/ash.md")
+      |> assert_creates("docs/elixir.md")
+      |> assert_creates("docs/otp.md")
+      |> assert_content_equals(
+        "rules.md",
+        """
+        <!-- usage-rules-start -->
+        <!-- ash-start -->
+        ## ash usage
+        [ash usage rules](docs/ash.md)
+        <!-- ash-end -->
+        <!-- elixir-start -->
+        ## elixir usage
+        [elixir usage rules](docs/elixir.md)
+        <!-- elixir-end -->
+        <!-- otp-start -->
+        ## otp usage
+        [otp usage rules](docs/otp.md)
+        <!-- otp-end -->
+        <!-- usage-rules-end -->
+        """
+        |> String.trim_trailing()
+      )
+      |> assert_content_equals("docs/ash.md", "Ash framework rules")
+    end
+
+    test "works with --link-to-folder deps and links to priv/builtins" do
+      test_project(
+        files: %{
+          "deps/ash/usage-rules.md" => "Ash framework rules"
+        }
+      )
+      |> Igniter.compose_task("usage_rules.sync", [
+        "rules.md",
+        "ash",
+        "--builtins",
+        "elixir",
+        "--link-to-folder",
+        "deps"
+      ])
+      |> assert_creates("rules.md")
+      |> assert_content_equals(
+        "rules.md",
+        """
+        <!-- usage-rules-start -->
+        <!-- ash-start -->
+        ## ash usage
+        [ash usage rules](deps/ash/usage-rules.md)
+        <!-- ash-end -->
+        <!-- elixir-start -->
+        ## elixir usage
+        [elixir usage rules](deps/usage_rules/priv/builtins/elixir.md)
+        <!-- elixir-end -->
+        <!-- usage-rules-end -->
+        """
+        |> String.trim_trailing()
+      )
+    end
+
+    test "works with @-style links for builtins" do
+      test_project()
+      |> Igniter.compose_task("usage_rules.sync", [
+        "rules.md",
+        "--all",
+        "--builtins",
+        "otp",
+        "--link-to-folder",
+        "rules",
+        "--link-style",
+        "at"
+      ])
+      |> assert_creates("rules.md")
+      |> assert_creates("rules/otp.md")
+      |> assert_content_equals(
+        "rules.md",
+        """
+        <!-- usage-rules-start -->
+        <!-- otp-start -->
+        ## otp usage
+        @rules/otp.md
+        <!-- otp-end -->
+        <!-- usage-rules-end -->
+        """
+        |> String.trim_trailing()
+      )
+    end
+
+    test "updates existing file with builtins" do
+      test_project(
+        files: %{
+          "rules.md" => """
+          # Existing Rules
+
+          <!-- usage-rules-start -->
+          <!-- ash-start -->
+          ## ash usage
+          Old ash content
+          <!-- ash-end -->
+          <!-- usage-rules-end -->
+
+          More content.
+          """,
+          "deps/ash/usage-rules.md" => "New ash content"
+        }
+      )
+      |> Igniter.compose_task("usage_rules.sync", ["rules.md", "ash", "--builtins", "elixir"])
+      |> assert_content_equals("rules.md", """
+      # Existing Rules
+
+      <!-- usage-rules-start -->
+      <!-- ash-start -->
+      ## ash usage
+      New ash content
+      <!-- ash-end -->
+      <!-- elixir-start -->
+      ## elixir usage
+      # Elixir Core Usage Rules
+
+      ## Pattern Matching
+      - Use pattern matching over conditional logic when possible
+      - Match on function heads instead of using `if`/`else` or `case` in function bodies
+      - Destructure maps and structs in function heads: `def process(%{key: value})`
+
+      ## Error Handling
+      - Use `{:ok, result}` and `{:error, reason}` tuples for operations that can fail
+      - Avoid raising exceptions for control flow
+      - Use `with` for chaining operations that return `{:ok, _}` or `{:error, _}`
+
+      ## Common Mistakes to Avoid
+      - Don't use `Enum` functions on large collections when `Stream` is more appropriate
+      - Avoid nested `case` statements - refactor to separate functions
+      - Don't use `String.to_atom/1` on user input (memory leak risk)
+      - Avoid `Process.sleep/1` in production code - use proper async patterns
+
+      ## Function Design
+      - Keep functions small and focused on a single responsibility
+      - Use guard clauses: `when is_binary(name) and byte_size(name) > 0`
+      - Prefer multiple function clauses over complex conditional logic
+      - Name functions descriptively: `calculate_total_price/2` not `calc/2`
+
+      ## Data Structures
+      - Use structs over maps when the shape is known: `defstruct [:name, :age]`
+      - Prefer keyword lists for options: `[timeout: 5000, retries: 3]`
+      - Use maps for dynamic key-value data
+      - Lists are for ordered collections, not key-value storage
+
+      ## Concurrency
+      - Use GenServer for stateful processes
+      - Prefer Task for one-off async operations
+      - Use Agent for simple state management
+      - Always handle process crashes with supervisors
+
+      ## Performance
+      - Prepend to lists, don't append: `[new | list]` not `list ++ [new]`
+      - Use `:binary.copy/1` when substring will outlive original binary
+      - Avoid repeated string concatenation in loops
+      - Use ETS for large in-memory lookups
+      <!-- elixir-end -->
+      <!-- usage-rules-end -->
+
+      More content.
+      """)
+    end
+
+    test "handles empty builtins string" do
+      test_project()
+      |> Igniter.compose_task("usage_rules.sync", ["rules.md", "--all", "--builtins", ""])
+      |> assert_creates("rules.md")
+    end
+
+    test "ignores duplicate builtins" do
+      test_project()
+      |> Igniter.compose_task("usage_rules.sync", [
+        "rules.md",
+        "--all",
+        "--builtins",
+        "elixir,elixir,otp"
+      ])
+      |> assert_has_notice("Including built-in usage rules for: elixir")
+      |> assert_has_notice("Including built-in usage rules for: otp")
+      |> assert_creates("rules.md")
+    end
+  end
 end
