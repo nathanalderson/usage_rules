@@ -2,6 +2,26 @@
 
 **UsageRules** is a development tool for Elixir projects that helps gather and consolidate usage rules from dependencies. The package provides Mix tasks to collect documentation from dependencies that have `usage-rules.md` files and combine them into a single rules file for your project.
 
+## Quickstart
+
+```sh
+# swap AGENTS.md out for a different file
+# if you need, like `CLAUDE.md`
+
+# sync core usage rules directly into your
+# agents file
+mix usage_rules.sync AGENTS.md  --builtins elixir,otp
+
+# sync projects as links to their usage rules
+# to save tokens. Agent can view them on demand
+mix usage_rules.sync AGENTS.md --all \
+  --link-to-folder deps
+```
+
+## Does it help?
+
+Yes, and we have data to back it up: https://github.com/ash-project/evals/blob/main/reports/flagship.md
+
 You'll note this package itself doesn't have a usage-rules.md. Its a simple tool that likely would not benefit from having a usage-rules.md file.
 
 `usage-rules.md` is not an existing standard, rather it is a community initiative that may evolve over time as adoption grows and feedback is gathered. We encourage experimentation and welcome input on how to make this approach more useful for the broader Elixir ecosystem.
@@ -46,8 +66,8 @@ This will create a folder called `rules`, with a file per package that has a `us
 to those from you rules file.
 
 ```sh
-mix usage_rules.sync CLAUDE.md --all \
-  --link-to-folder docs \
+mix usage_rules.sync AGENTS.md --all \
+  --link-to-folder deps \
   --builtins elixir,otp
 ```
 
