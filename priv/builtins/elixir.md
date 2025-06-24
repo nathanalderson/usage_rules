@@ -13,7 +13,7 @@
 - Don't use `Enum` functions on large collections when `Stream` is more appropriate
 - Avoid nested `case` statements - refactor to a single `case`, `with` or separate functions
 - Don't use `String.to_atom/1` on user input (memory leak risk)
-- Lists and enumerables cannot be indexed with brackets, use `List.at/1` or `Enum.at/1` instead.
+- Lists and enumerables cannot be indexed with brackets. Use pattern matching, `Enum` functions or `hd/1` and `tl/1`.
 
 ## Function Design
 - Use guard clauses: `when is_binary(name) and byte_size(name) > 0`
