@@ -5,6 +5,19 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## v0.1.8 (2025-06-24)
+
+
+
+
+### Improvements:
+
+* remove a confusing usage rule on list purposes by Zach Daniel
+
+* add a usage rule about indexing lists/enumerables by Zach Daniel
+
+* add builtin usage rules by Zach Daniel
+
 ## v0.1.7 (2025-06-23)
 
 
