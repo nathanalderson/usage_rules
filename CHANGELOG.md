@@ -5,6 +5,15 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## v0.1.9 (2025-06-24)
+
+
+
+
+### Bug Fixes:
+
+* don't mention hd/1 or tl/1 in elixir usage rules by Zach Daniel
+
 ## v0.1.8 (2025-06-24)
 
 
