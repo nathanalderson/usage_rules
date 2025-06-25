@@ -180,6 +180,14 @@ defmodule Mix.Tasks.UsageRules.SyncTest do
       # Existing Rules
 
       <!-- usage-rules-start -->
+      <!-- usage-rules-header -->
+      # Usage Rules
+
+      **IMPORTANT**: Consult these usage rules early and often when working with the packages listed below. 
+      Before attempting to use any of these packages or to discover if you should use them, review their 
+      usage rules to understand the correct patterns, conventions, and best practices.
+      <!-- usage-rules-header-end -->
+
       <!-- ash-start -->
       ## ash usage
       Old ash content
@@ -217,6 +225,14 @@ defmodule Mix.Tasks.UsageRules.SyncTest do
       # Existing Rules
 
       <!-- usage-rules-start -->
+      <!-- usage-rules-header -->
+      # Usage Rules
+
+      **IMPORTANT**: Consult these usage rules early and often when working with the packages listed below. 
+      Before attempting to use any of these packages or to discover if you should use them, review their 
+      usage rules to understand the correct patterns, conventions, and best practices.
+      <!-- usage-rules-header-end -->
+
       <!-- ash_json_api-start -->
       ## ash_json_api usage
       New AshJsonApi usage rules
@@ -452,6 +468,14 @@ defmodule Mix.Tasks.UsageRules.SyncTest do
         "rules.md",
         """
         <!-- usage-rules-start -->
+        <!-- usage-rules-header -->
+        # Usage Rules
+
+        **IMPORTANT**: Consult these usage rules early and often when working with the packages listed below. 
+        Before attempting to use any of these packages or to discover if you should use them, review their 
+        usage rules to understand the correct patterns, conventions, and best practices.
+        <!-- usage-rules-header-end -->
+
         <!-- ash-start -->
         ## ash usage
         [ash usage rules](rules/ash.md)
@@ -514,6 +538,14 @@ defmodule Mix.Tasks.UsageRules.SyncTest do
         "rules.md",
         """
         <!-- usage-rules-start -->
+        <!-- usage-rules-header -->
+        # Usage Rules
+
+        **IMPORTANT**: Consult these usage rules early and often when working with the packages listed below. 
+        Before attempting to use any of these packages or to discover if you should use them, review their 
+        usage rules to understand the correct patterns, conventions, and best practices.
+        <!-- usage-rules-header-end -->
+
         <!-- ash-start -->
         ## ash usage
         @rules/ash.md
@@ -561,6 +593,14 @@ defmodule Mix.Tasks.UsageRules.SyncTest do
       # Existing Rules
 
       <!-- usage-rules-start -->
+      <!-- usage-rules-header -->
+      # Usage Rules
+
+      **IMPORTANT**: Consult these usage rules early and often when working with the packages listed below. 
+      Before attempting to use any of these packages or to discover if you should use them, review their 
+      usage rules to understand the correct patterns, conventions, and best practices.
+      <!-- usage-rules-header-end -->
+
       <!-- ash-start -->
       ## ash usage
       [ash usage rules](rules/ash.md)
@@ -594,6 +634,14 @@ defmodule Mix.Tasks.UsageRules.SyncTest do
         "rules.md",
         """
         <!-- usage-rules-start -->
+        <!-- usage-rules-header -->
+        # Usage Rules
+
+        **IMPORTANT**: Consult these usage rules early and often when working with the packages listed below. 
+        Before attempting to use any of these packages or to discover if you should use them, review their 
+        usage rules to understand the correct patterns, conventions, and best practices.
+        <!-- usage-rules-header-end -->
+
         <!-- ash-start -->
         ## ash usage
         [ash usage rules](docs/usage/ash.md)
@@ -801,6 +849,14 @@ defmodule Mix.Tasks.UsageRules.SyncTest do
       expected_content =
         """
         <!-- usage-rules-start -->
+        <!-- usage-rules-header -->
+        # Usage Rules
+
+        **IMPORTANT**: Consult these usage rules early and often when working with the packages listed below. 
+        Before attempting to use any of these packages or to discover if you should use them, review their 
+        usage rules to understand the correct patterns, conventions, and best practices.
+        <!-- usage-rules-header-end -->
+
         <!-- ash-start -->
         ## ash usage
         [ash usage rules](deps/ash/usage-rules.md)
@@ -846,6 +902,14 @@ defmodule Mix.Tasks.UsageRules.SyncTest do
       expected_content =
         """
         <!-- usage-rules-start -->
+        <!-- usage-rules-header -->
+        # Usage Rules
+
+        **IMPORTANT**: Consult these usage rules early and often when working with the packages listed below. 
+        Before attempting to use any of these packages or to discover if you should use them, review their 
+        usage rules to understand the correct patterns, conventions, and best practices.
+        <!-- usage-rules-header-end -->
+
         <!-- ash-start -->
         ## ash usage
         @deps/ash/usage-rules.md
@@ -1025,7 +1089,8 @@ defmodule Mix.Tasks.UsageRules.SyncTest do
         "--builtins",
         "elixir,otp",
         "--link-to-folder",
-        "docs"
+        "docs",
+        "--builtins-link"
       ])
       |> assert_creates("rules.md")
       |> assert_creates("docs/ash.md")
@@ -1035,16 +1100,28 @@ defmodule Mix.Tasks.UsageRules.SyncTest do
         "rules.md",
         """
         <!-- usage-rules-start -->
+        <!-- usage-rules-header -->
+        # Usage Rules
+
+        **IMPORTANT**: Consult these usage rules early and often when working with the packages listed below. 
+        Before attempting to use any of these packages or to discover if you should use them, review their 
+        usage rules to understand the correct patterns, conventions, and best practices.
+        <!-- usage-rules-header-end -->
+
         <!-- ash-start -->
         ## ash usage
         [ash usage rules](docs/ash.md)
         <!-- ash-end -->
         <!-- elixir-start -->
         ## elixir usage
+        _Core Elixir language features and standard library_
+
         [elixir usage rules](docs/elixir.md)
         <!-- elixir-end -->
         <!-- otp-start -->
         ## otp usage
+        _OTP (Open Telecom Platform) behaviors and patterns_
+
         [otp usage rules](docs/otp.md)
         <!-- otp-end -->
         <!-- usage-rules-end -->
@@ -1073,13 +1150,51 @@ defmodule Mix.Tasks.UsageRules.SyncTest do
         "rules.md",
         """
         <!-- usage-rules-start -->
+        <!-- usage-rules-header -->
+        # Usage Rules
+
+        **IMPORTANT**: Consult these usage rules early and often when working with the packages listed below. 
+        Before attempting to use any of these packages or to discover if you should use them, review their 
+        usage rules to understand the correct patterns, conventions, and best practices.
+        <!-- usage-rules-header-end -->
+
         <!-- ash-start -->
         ## ash usage
         [ash usage rules](deps/ash/usage-rules.md)
         <!-- ash-end -->
         <!-- elixir-start -->
         ## elixir usage
-        [elixir usage rules](deps/usage_rules/priv/builtins/elixir.md)
+        _Core Elixir language features and standard library_
+
+        # Elixir Core Usage Rules
+
+        ## Pattern Matching
+        - Use pattern matching over conditional logic when possible
+        - Prefer to match on function heads instead of using `if`/`else` or `case` in function bodies
+
+        ## Error Handling
+        - Use `{:ok, result}` and `{:error, reason}` tuples for operations that can fail
+        - Avoid raising exceptions for control flow
+        - Use `with` for chaining operations that return `{:ok, _}` or `{:error, _}`
+
+        ## Common Mistakes to Avoid
+        - Don't use `Enum` functions on large collections when `Stream` is more appropriate
+        - Avoid nested `case` statements - refactor to a single `case`, `with` or separate functions
+        - Don't use `String.to_atom/1` on user input (memory leak risk)
+        - Lists and enumerables cannot be indexed with brackets. Use pattern matching or `Enum` functions.
+        - Only use macros if explicitly requested
+
+        ## Function Design
+        - Use guard clauses: `when is_binary(name) and byte_size(name) > 0`
+        - Prefer multiple function clauses over complex conditional logic
+        - Name functions descriptively: `calculate_total_price/2` not `calc/2`
+
+        ## Data Structures
+        - Use structs over maps when the shape is known: `defstruct [:name, :age]`
+        - Prefer keyword lists for options: `[timeout: 5000, retries: 3]`
+        - Use maps for dynamic key-value data
+        - Prefer to prepend to lists `[new | list]` not `list ++ [new]`
+
         <!-- elixir-end -->
         <!-- usage-rules-end -->
         """
@@ -1097,7 +1212,8 @@ defmodule Mix.Tasks.UsageRules.SyncTest do
         "--link-to-folder",
         "rules",
         "--link-style",
-        "at"
+        "at",
+        "--builtins-link"
       ])
       |> assert_creates("rules.md")
       |> assert_creates("rules/otp.md")
@@ -1105,8 +1221,18 @@ defmodule Mix.Tasks.UsageRules.SyncTest do
         "rules.md",
         """
         <!-- usage-rules-start -->
+        <!-- usage-rules-header -->
+        # Usage Rules
+
+        **IMPORTANT**: Consult these usage rules early and often when working with the packages listed below. 
+        Before attempting to use any of these packages or to discover if you should use them, review their 
+        usage rules to understand the correct patterns, conventions, and best practices.
+        <!-- usage-rules-header-end -->
+
         <!-- otp-start -->
         ## otp usage
+        _OTP (Open Telecom Platform) behaviors and patterns_
+
         @rules/otp.md
         <!-- otp-end -->
         <!-- usage-rules-end -->

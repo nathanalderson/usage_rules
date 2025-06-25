@@ -273,12 +273,41 @@ if Code.ensure_loaded?(Igniter) do
         builtin_path = Path.join([:code.priv_dir(:usage_rules), "builtins", "#{builtin}.md"])
         content = File.read!(builtin_path)
 
+        description =
+          case builtin do
+            "elixir" -> "Core Elixir language features and standard library"
+            "otp" -> "OTP (Open Telecom Platform) behaviors and patterns"
+            _ -> ""
+          end
+
+        description_part = if description == "", do: "", else: "_#{description}_\n\n"
+
         {String.to_atom(builtin),
          "<!-- #{builtin}-start -->\n" <>
            "## #{builtin} usage\n" <>
+           description_part <>
            content <>
            "\n<!-- #{builtin}-end -->"}
       end)
+    end
+
+    defp usage_rules_header do
+      """
+      <!-- usage-rules-header -->
+      # Usage Rules
+
+      **IMPORTANT**: Consult these usage rules early and often when working with the packages listed below. 
+      Before attempting to use any of these packages or to discover if you should use them, review their 
+      usage rules to understand the correct patterns, conventions, and best practices.
+      <!-- usage-rules-header-end -->
+      """
+    end
+
+    defp get_package_description(name) do
+      case Application.spec(name, :description) do
+        nil -> ""
+        desc -> to_string(desc)
+      end
     end
 
     defp get_deps_from_igniter(igniter) do
@@ -520,9 +549,13 @@ if Code.ensure_loaded?(Igniter) do
               {:error, _} -> File.read!(usage_rules_path)
             end
 
+          description = get_package_description(name)
+          description_part = if description == "", do: "", else: "_#{description}_\n\n"
+
           {name,
            "<!-- #{name}-start -->\n" <>
              "## #{name} usage\n" <>
+             description_part <>
              content <>
              "\n<!-- #{name}-end -->"}
         end)
@@ -534,6 +567,8 @@ if Code.ensure_loaded?(Igniter) do
 
       full_contents_for_new_file =
         "<!-- usage-rules-start -->\n" <>
+          usage_rules_header() <>
+          "\n" <>
           all_rules_content <>
           "\n<!-- usage-rules-end -->"
 
@@ -564,9 +599,17 @@ if Code.ensure_loaded?(Igniter) do
                   end
                 end)
                 |> then(fn content ->
+                  # Ensure header is present
+                  content_with_header =
+                    if String.contains?(content, "<!-- usage-rules-header -->") do
+                      content
+                    else
+                      usage_rules_header() <> "\n" <> content
+                    end
+
                   prelude <>
                     "<!-- usage-rules-start -->\n" <>
-                    content <>
+                    content_with_header <>
                     "\n<!-- usage-rules-end -->" <>
                     postlude
                 end)
@@ -574,6 +617,8 @@ if Code.ensure_loaded?(Igniter) do
               _ ->
                 current_contents <>
                   "\n<!-- usage-rules-start -->\n" <>
+                  usage_rules_header() <>
+                  "\n" <>
                   all_rules_content <>
                   "\n<!-- usage-rules-end -->\n"
             end
@@ -653,9 +698,13 @@ if Code.ensure_loaded?(Igniter) do
               _ -> "[#{name} usage rules](#{folder_name}/#{name}.md)"
             end
 
+          description = get_package_description(name)
+          description_part = if description == "", do: "", else: "_#{description}_\n\n"
+
           {name,
            "<!-- #{name}-start -->\n" <>
              "## #{name} usage\n" <>
+             description_part <>
              link_content <>
              "\n<!-- #{name}-end -->"}
         end)
@@ -680,9 +729,19 @@ if Code.ensure_loaded?(Igniter) do
                   "[#{builtin} usage rules](#{folder_name}/#{builtin}.md)"
               end
 
+            description =
+              case builtin do
+                "elixir" -> "Core Elixir language features and standard library"
+                "otp" -> "OTP (Open Telecom Platform) behaviors and patterns"
+                _ -> ""
+              end
+
+            description_part = if description == "", do: "", else: "_#{description}_\n\n"
+
             {String.to_atom(builtin),
              "<!-- #{builtin}-start -->\n" <>
                "## #{builtin} usage\n" <>
+               description_part <>
                link_content <>
                "\n<!-- #{builtin}-end -->"}
           end)
@@ -696,6 +755,8 @@ if Code.ensure_loaded?(Igniter) do
 
       full_contents_for_new_file =
         "<!-- usage-rules-start -->\n" <>
+          usage_rules_header() <>
+          "\n" <>
           all_rules_content <>
           "\n<!-- usage-rules-end -->"
 
@@ -726,9 +787,17 @@ if Code.ensure_loaded?(Igniter) do
                   end
                 end)
                 |> then(fn content ->
+                  # Ensure header is present
+                  content_with_header =
+                    if String.contains?(content, "<!-- usage-rules-header -->") do
+                      content
+                    else
+                      usage_rules_header() <> "\n" <> content
+                    end
+
                   prelude <>
                     "<!-- usage-rules-start -->\n" <>
-                    content <>
+                    content_with_header <>
                     "\n<!-- usage-rules-end -->" <>
                     postlude
                 end)
@@ -736,6 +805,8 @@ if Code.ensure_loaded?(Igniter) do
               _ ->
                 current_contents <>
                   "\n<!-- usage-rules-start -->\n" <>
+                  usage_rules_header() <>
+                  "\n" <>
                   all_rules_content <>
                   "\n<!-- usage-rules-end -->\n"
             end
