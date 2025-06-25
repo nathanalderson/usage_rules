@@ -5,6 +5,17 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## v0.1.11 (2025-06-25)
+
+
+
+
+### Improvements:
+
+* add descriptions to usage rules by Zach Daniel
+
+* make builtin usage rules always show inline by Zach Daniel
+
 ## v0.1.10 (2025-06-25)
 
 
