@@ -5,6 +5,15 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## v0.1.10 (2025-06-25)
+
+
+
+
+### Improvements:
+
+* guard against excessive macro usage in elixir rules by Zach Daniel
+
 ## v0.1.9 (2025-06-24)
 
 
