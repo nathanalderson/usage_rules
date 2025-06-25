@@ -14,6 +14,7 @@
 - Avoid nested `case` statements - refactor to a single `case`, `with` or separate functions
 - Don't use `String.to_atom/1` on user input (memory leak risk)
 - Lists and enumerables cannot be indexed with brackets. Use pattern matching or `Enum` functions.
+- Only use macros if explicitly requested
 
 ## Function Design
 - Use guard clauses: `when is_binary(name) and byte_size(name) > 0`
