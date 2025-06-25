@@ -5,16 +5,12 @@
 ## Quickstart
 
 ```sh
-# swap AGENTS.md out for a different file
-# if you need, like `CLAUDE.md`
-
-# sync core usage rules directly into your
-# agents file
-mix usage_rules.sync AGENTS.md  --builtins elixir,otp
+# swap AGENTS.md out for any file you like, e.g `CLAUDE.md`
 
 # sync projects as links to their usage rules
 # to save tokens. Agent can view them on demand
 mix usage_rules.sync AGENTS.md --all \
+  --builtins elixir,otp \
   --link-to-folder deps
 ```
 

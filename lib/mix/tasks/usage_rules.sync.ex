@@ -24,6 +24,7 @@ defmodule Mix.Tasks.UsageRules.Sync.Docs do
     * `--link-to-folder <folder>` - Save usage rules for each package in separate files within the specified folder and create links to them
     * `--link-style <style>` - Style of links to create when using --link-to-folder (markdown|at). Defaults to 'markdown'
     * `--builtins <builtins>` - Include built-in usage rules (comma-separated: elixir,otp)
+    * `--builtins-link` - Make built-in usage rules honor the --link-to-folder option (default: false, builtins are inlined)
 
     ## Examples
 
@@ -86,6 +87,10 @@ defmodule Mix.Tasks.UsageRules.Sync.Docs do
     ```sh
     mix usage_rules.sync CLAUDE.md --all --link-to-folder deps --builtins elixir,otp
     ```
+    Include built-in usage rules with links to folder:
+    ```sh
+    mix usage_rules.sync CLAUDE.md --all --link-to-folder docs --builtins elixir,otp --builtins-link
+    ```
     """
   end
 end
@@ -115,7 +120,8 @@ if Code.ensure_loaded?(Igniter) do
           remove: :boolean,
           link_to_folder: :string,
           link_style: :string,
-          builtins: :string
+          builtins: :string,
+          builtins_link: :boolean
         ]
       }
     end
@@ -157,6 +163,7 @@ if Code.ensure_loaded?(Igniter) do
       link_style = igniter.args.options[:link_style] || "markdown"
       provided_packages = igniter.args.positional.packages
       builtins = parse_builtins(igniter.args.options[:builtins])
+      builtins_link = igniter.args.options[:builtins_link]
 
       cond do
         # If --builtins contains invalid values, add error
@@ -211,7 +218,14 @@ if Code.ensure_loaded?(Igniter) do
 
         # Handle --all option
         all_option ->
-          handle_all_option(igniter, all_deps, link_to_folder, link_style, builtins)
+          handle_all_option(
+            igniter,
+            all_deps,
+            link_to_folder,
+            link_style,
+            builtins,
+            builtins_link
+          )
 
         # Handle --list option
         list_option ->
@@ -225,7 +239,8 @@ if Code.ensure_loaded?(Igniter) do
             provided_packages,
             link_to_folder,
             link_style,
-            builtins
+            builtins,
+            builtins_link
           )
       end
     end
@@ -320,7 +335,7 @@ if Code.ensure_loaded?(Igniter) do
       """)
     end
 
-    defp handle_all_option(igniter, all_deps, link_to_folder, link_style, builtins) do
+    defp handle_all_option(igniter, all_deps, link_to_folder, link_style, builtins, builtins_link) do
       all_packages_with_rules = get_packages_with_usage_rules(igniter, all_deps)
 
       igniter
@@ -333,7 +348,13 @@ if Code.ensure_loaded?(Igniter) do
         end)
       end)
       |> maybe_add_builtin_notices(builtins)
-      |> generate_usage_rules_file(all_packages_with_rules, link_to_folder, link_style, builtins)
+      |> generate_usage_rules_file(
+        all_packages_with_rules,
+        link_to_folder,
+        link_style,
+        builtins,
+        builtins_link
+      )
     end
 
     defp maybe_add_builtin_notices(igniter, []), do: igniter
@@ -371,7 +392,8 @@ if Code.ensure_loaded?(Igniter) do
            provided_packages,
            link_to_folder,
            link_style,
-           builtins
+           builtins,
+           builtins_link
          ) do
       packages =
         all_deps
@@ -390,7 +412,7 @@ if Code.ensure_loaded?(Igniter) do
 
       igniter
       |> maybe_add_builtin_notices(builtins)
-      |> generate_usage_rules_file(packages, link_to_folder, link_style, builtins)
+      |> generate_usage_rules_file(packages, link_to_folder, link_style, builtins, builtins_link)
     end
 
     defp handle_remove_packages(igniter, provided_packages, link_to_folder) do
@@ -464,14 +486,22 @@ if Code.ensure_loaded?(Igniter) do
       end
     end
 
-    defp generate_usage_rules_file(igniter, packages, link_to_folder, link_style, builtins) do
+    defp generate_usage_rules_file(
+           igniter,
+           packages,
+           link_to_folder,
+           link_style,
+           builtins,
+           builtins_link
+         ) do
       if link_to_folder do
         generate_usage_rules_with_folder_links(
           igniter,
           packages,
           link_to_folder,
           link_style,
-          builtins
+          builtins,
+          builtins_link
         )
       else
         generate_usage_rules_inline(igniter, packages, builtins)
@@ -558,31 +588,36 @@ if Code.ensure_loaded?(Igniter) do
            packages,
            folder_name,
            link_style,
-           builtins
+           builtins,
+           builtins_link
          ) do
       # Create individual files for each package in the folder (unless folder is "deps")
       igniter =
         if folder_name == "deps" do
           igniter
         else
-          # Create builtin files in the target folder
+          # Create builtin files in the target folder only if builtins_link is true
           igniter =
-            Enum.reduce(builtins, igniter, fn builtin, acc ->
-              builtin_source_path =
-                Path.join([:code.priv_dir(:usage_rules), "builtins", "#{builtin}.md"])
+            if builtins_link do
+              Enum.reduce(builtins, igniter, fn builtin, acc ->
+                builtin_source_path =
+                  Path.join([:code.priv_dir(:usage_rules), "builtins", "#{builtin}.md"])
 
-              builtin_file_path = Path.join(folder_name, "#{builtin}.md")
-              content = File.read!(builtin_source_path)
+                builtin_file_path = Path.join(folder_name, "#{builtin}.md")
+                content = File.read!(builtin_source_path)
 
-              Igniter.create_or_update_file(
-                acc,
-                builtin_file_path,
-                content,
-                fn source ->
-                  Rewrite.Source.update(source, :content, content)
-                end
-              )
-            end)
+                Igniter.create_or_update_file(
+                  acc,
+                  builtin_file_path,
+                  content,
+                  fn source ->
+                    Rewrite.Source.update(source, :content, content)
+                  end
+                )
+              end)
+            else
+              igniter
+            end
 
           Enum.reduce(packages, igniter, fn {name, path}, acc ->
             usage_rules_path = Path.join(path, "usage-rules.md")
@@ -626,29 +661,35 @@ if Code.ensure_loaded?(Igniter) do
         end)
 
       builtin_contents =
-        builtins
-        |> Enum.map(fn builtin ->
-          link_content =
-            case {link_style, folder_name} do
-              {"at", "deps"} ->
-                "@deps/usage_rules/priv/builtins/#{builtin}.md"
+        if builtins_link do
+          # If builtins_link is true, create links
+          builtins
+          |> Enum.map(fn builtin ->
+            link_content =
+              case {link_style, folder_name} do
+                {"at", "deps"} ->
+                  "@deps/usage_rules/priv/builtins/#{builtin}.md"
 
-              {"at", _} ->
-                "@#{folder_name}/#{builtin}.md"
+                {"at", _} ->
+                  "@#{folder_name}/#{builtin}.md"
 
-              {_, "deps"} ->
-                "[#{builtin} usage rules](deps/usage_rules/priv/builtins/#{builtin}.md)"
+                {_, "deps"} ->
+                  "[#{builtin} usage rules](deps/usage_rules/priv/builtins/#{builtin}.md)"
 
-              _ ->
-                "[#{builtin} usage rules](#{folder_name}/#{builtin}.md)"
-            end
+                _ ->
+                  "[#{builtin} usage rules](#{folder_name}/#{builtin}.md)"
+              end
 
-          {String.to_atom(builtin),
-           "<!-- #{builtin}-start -->\n" <>
-             "## #{builtin} usage\n" <>
-             link_content <>
-             "\n<!-- #{builtin}-end -->"}
-        end)
+            {String.to_atom(builtin),
+             "<!-- #{builtin}-start -->\n" <>
+               "## #{builtin} usage\n" <>
+               link_content <>
+               "\n<!-- #{builtin}-end -->"}
+          end)
+        else
+          # If builtins_link is false (default), inline the content
+          get_builtin_contents(builtins)
+        end
 
       all_contents = package_contents ++ builtin_contents
       all_rules_content = Enum.map_join(all_contents, "\n", &elem(&1, 1))
