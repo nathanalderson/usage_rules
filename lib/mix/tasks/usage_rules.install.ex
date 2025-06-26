@@ -44,7 +44,22 @@ if Code.ensure_loaded?(Igniter) do
 
     @impl Igniter.Mix.Task
     def igniter(igniter) do
+      file =
+        Enum.find(
+          ["AGENTS.md", "CLAUDE.md", "RULES.md", "rules.md", "cursorrules", "rules"],
+          "AGENTS.md",
+          &Igniter.exists?(igniter, &1)
+        )
+
       igniter
+      |> Igniter.compose_task("usage_rules.sync", [
+        file,
+        "--all",
+        "--link-to-folder",
+        "deps",
+        "--builtins",
+        "elixir,otp"
+      ])
     end
   end
 else
