@@ -33,5 +33,3 @@
 - Limit the number of failed tests with `mix test --max-failures n`
 - Use `@tag` to tag specific tests, and `mix test --only tag` to run only those tests
 - Use `assert_raise` for testing expected exceptions: `assert_raise ArgumentError, fn -> invalid_function() end`
-- Use `setup` and `setup_all` for test preparation and cleanup
-- Group related tests with `describe` blocks for better organization
