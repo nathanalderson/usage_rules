@@ -5,6 +5,15 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## v0.1.13 (2025-06-26)
+
+
+
+
+### Improvements:
+
+* trim testing usage rules by Zach Daniel
+
 ## v0.1.12 (2025-06-25)
 
 
