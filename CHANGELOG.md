@@ -5,6 +5,15 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## v0.1.14 (2025-06-26)
+
+
+
+
+### Improvements:
+
+* update installer by Zach Daniel
+
 ## v0.1.13 (2025-06-26)
 
 
