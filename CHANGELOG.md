@@ -5,6 +5,13 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [Unreleased]
+
+### Features:
+
+* add sub-rules support - Packages can now have a `usage_rules/` folder with multiple sub-rule files that can be included individually using `package:rule` syntax or all at once with `package:all`
+* add `--inline` option - Force specific packages to be inlined even when using `--link-to-folder`. Supports special `usage_rules:all` spec to inline all sub-rules while linking main packages
+
 ## v0.1.14 (2025-06-26)
 
 

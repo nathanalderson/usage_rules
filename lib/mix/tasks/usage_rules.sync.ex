@@ -16,15 +16,26 @@ defmodule Mix.Tasks.UsageRules.Sync.Docs do
     """
     #{short_doc()}
 
+    ## Package Specifications
+
+    Packages can be specified in the following formats:
+    * `package_name` - Include the main usage-rules.md file for the package
+    * `package_name:sub_rule` - Include a specific sub-rule from the package's usage-rules/ folder
+    * `package_name:all` - Include all sub-rules from the package's usage-rules/ folder
+
+    Sub-rules are discovered from `usage-rules/` folders within package directories. For example:
+    * `deps/ash/usage-rules/testing.md` can be included with `ash:testing`
+    * `deps/phoenix/usage-rules/views.md` can be included with `phoenix:views`
+
     ## Options
 
-    * `--all` - Gather usage rules from all dependencies that have them
+    * `--all` - Gather usage rules from all dependencies that have them (includes both main rules and all sub-rules)
     * `--list` - List all dependencies with usage rules. If a file is provided, shows status (present, missing, stale)
     * `--remove` - Remove specified packages from the target file instead of adding them
+    * `--remove-missing` - Remove any packages from the target file that are not listed in the command
     * `--link-to-folder <folder>` - Save usage rules for each package in separate files within the specified folder and create links to them
     * `--link-style <style>` - Style of links to create when using --link-to-folder (markdown|at). Defaults to 'markdown'
-    * `--builtins <builtins>` - Include built-in usage rules (comma-separated: elixir,otp)
-    * `--builtins-link` - Make built-in usage rules honor the --link-to-folder option (default: false, builtins are inlined)
+    * `--inline <specs>` - Force specific packages to be inlined even when using --link-to-folder. Supports same specs as packages (comma-separated)
 
     ## Examples
 
@@ -83,14 +94,36 @@ defmodule Mix.Tasks.UsageRules.Sync.Docs do
     mix usage_rules.sync CLAUDE.md ash phoenix --remove --link-to-folder rules
     ```
 
-    Include built-in Elixir and OTP usage rules:
+    Include specific sub-rules:
     ```sh
-    mix usage_rules.sync CLAUDE.md --all --link-to-folder deps --builtins elixir,otp
+    mix usage_rules.sync CLAUDE.md ash:testing phoenix:views
     ```
-    Include built-in usage rules with links to folder:
+
+    Include all sub-rules from a package:
     ```sh
-    mix usage_rules.sync CLAUDE.md --all --link-to-folder docs --builtins elixir,otp --builtins-link
+    mix usage_rules.sync CLAUDE.md ash:all
     ```
+
+    Mix main package rules with sub-rules:
+    ```sh
+    mix usage_rules.sync CLAUDE.md ash ash:testing phoenix:views
+    ```
+
+    Inline all sub-rules while linking main packages (recommended for agents):
+    ```sh
+    mix usage_rules.sync AGENTS.md --all --inline usage_rules:all --link-to-folder deps
+    ```
+
+    Inline specific packages while linking others:
+    ```sh
+    mix usage_rules.sync CLAUDE.md ash:testing phoenix --inline ash:testing --link-to-folder docs
+    ```
+
+    Remove unused packages that are no longer dependencies:
+    ```sh
+    mix usage_rules.sync CLAUDE.md ash phoenix --remove-missing
+    ```
+
     """
   end
 end
@@ -118,10 +151,10 @@ if Code.ensure_loaded?(Igniter) do
           all: :boolean,
           list: :boolean,
           remove: :boolean,
+          remove_missing: :boolean,
           link_to_folder: :string,
           link_style: :string,
-          builtins: :string,
-          builtins_link: :boolean
+          inline: :string
         ]
       }
     end
@@ -137,8 +170,11 @@ if Code.ensure_loaded?(Igniter) do
           igniter
         end
 
-      # Add all usage-rules.md files from deps directory to igniter
-      igniter = Igniter.include_glob(igniter, "deps/*/usage-rules.md")
+      # Add all usage-rules.md files and usage_rules/ folders from deps directory to igniter
+      igniter =
+        igniter
+        |> Igniter.include_glob("deps/*/usage-rules.md")
+        |> Igniter.include_glob("deps/*/usage_rules/*.md")
 
       top_level_deps =
         Mix.Project.get().project()[:deps] |> Enum.map(&elem(&1, 0))
@@ -159,23 +195,13 @@ if Code.ensure_loaded?(Igniter) do
       all_option = igniter.args.options[:all]
       list_option = igniter.args.options[:list]
       remove_option = igniter.args.options[:remove]
+      remove_missing_option = igniter.args.options[:remove_missing]
       link_to_folder = igniter.args.options[:link_to_folder]
       link_style = igniter.args.options[:link_style] || "markdown"
+      inline_specs = parse_inline_specs(igniter.args.options[:inline])
       provided_packages = igniter.args.positional.packages
-      builtins = parse_builtins(igniter.args.options[:builtins])
-      builtins_link = igniter.args.options[:builtins_link]
 
       cond do
-        # If --builtins contains invalid values, add error
-        igniter.args.options[:builtins] &&
-            parse_invalid_builtins(igniter.args.options[:builtins]) != [] ->
-          invalid = parse_invalid_builtins(igniter.args.options[:builtins])
-
-          Igniter.add_issue(
-            igniter,
-            "Invalid builtins: #{Enum.join(invalid, ", ")}. Valid options are: elixir, otp"
-          )
-
         # If --link-style is used with invalid value, add error
         link_style && link_style not in ["markdown", "at"] ->
           Igniter.add_issue(igniter, "--link-style must be either 'markdown' or 'at'")
@@ -187,6 +213,14 @@ if Code.ensure_loaded?(Igniter) do
         # If --remove is used with --all or --list, add error
         remove_option && (all_option || list_option) ->
           Igniter.add_issue(igniter, "Cannot use --remove with --all or --list options")
+
+        # If --remove-missing is used without a file, add error
+        remove_missing_option && is_nil(igniter.args.positional[:file]) ->
+          Igniter.add_issue(igniter, "--remove-missing option requires a file to modify")
+
+        # If --remove-missing is used with --list, add error
+        remove_missing_option && list_option ->
+          Igniter.add_issue(igniter, "Cannot use --remove-missing with --list option")
 
         # If --remove is used without a file, add error
         remove_option && is_nil(igniter.args.positional[:file]) ->
@@ -208,8 +242,9 @@ if Code.ensure_loaded?(Igniter) do
         link_to_folder && is_nil(igniter.args.positional[:file]) ->
           Igniter.add_issue(igniter, "--link-to-folder option requires a file to write to")
 
-        # If no packages are given and neither --list nor --all nor --remove is set, add error
-        Enum.empty?(provided_packages) && !all_option && !list_option && !remove_option ->
+        # If no packages are given and neither --list nor --all nor --remove nor --remove-missing is set, add error
+        Enum.empty?(provided_packages) && !all_option && !list_option && !remove_option &&
+            !remove_missing_option ->
           add_usage_error(igniter)
 
         # Handle --remove option
@@ -223,8 +258,8 @@ if Code.ensure_loaded?(Igniter) do
             all_deps,
             link_to_folder,
             link_style,
-            builtins,
-            builtins_link
+            inline_specs,
+            remove_missing_option
           )
 
         # Handle --list option
@@ -239,56 +274,37 @@ if Code.ensure_loaded?(Igniter) do
             provided_packages,
             link_to_folder,
             link_style,
-            builtins,
-            builtins_link
+            inline_specs,
+            remove_missing_option
           )
       end
+      |> notice_about_all_option(all_option)
     end
 
-    defp parse_builtins(nil), do: []
+    defp notice_about_all_option(igniter, all_option) do
+      file = igniter.args.positional[:file]
 
-    defp parse_builtins(builtins_string) do
-      builtins_string
-      |> String.split(",")
-      |> Enum.map(&String.trim/1)
-      |> Enum.filter(fn builtin ->
-        builtin in ["elixir", "otp"]
-      end)
-    end
+      if all_option do
+        Igniter.add_notice(igniter, """
+        Usage Rules:
 
-    defp parse_invalid_builtins(nil), do: []
+        We've synchronized usage rules for all of your direct
+        dependencies into #{file}. When working with agents, it
+        is important to manage your context window. Consider
+        which packages you wish to have present. You can use
+        the `--remove-missing` flag to select exactly what to sync.
 
-    defp parse_invalid_builtins(builtins_string) do
-      builtins_string
-      |> String.split(",")
-      |> Enum.map(&String.trim/1)
-      |> Enum.reject(fn builtin ->
-        builtin in ["", "elixir", "otp"]
-      end)
-    end
+        For example:
 
-    defp get_builtin_contents(builtins) do
-      builtins
-      |> Enum.map(fn builtin ->
-        builtin_path = Path.join([:code.priv_dir(:usage_rules), "builtins", "#{builtin}.md"])
-        content = File.read!(builtin_path)
-
-        description =
-          case builtin do
-            "elixir" -> "Core Elixir language features and standard library"
-            "otp" -> "OTP (Open Telecom Platform) behaviors and patterns"
-            _ -> ""
-          end
-
-        description_part = if description == "", do: "", else: "_#{description}_\n\n"
-
-        {String.to_atom(builtin),
-         "<!-- #{builtin}-start -->\n" <>
-           "## #{builtin} usage\n" <>
-           description_part <>
-           content <>
-           "\n<!-- #{builtin}-end -->"}
-      end)
+            mix usage_rules.sync #{file} pkg1 pkg2 \\
+              usage_rules:all \\
+              --inline usage_rules:all \\
+              --link-to-folder deps \\
+              --remove-missing
+        """)
+      else
+        igniter
+      end
     end
 
     defp usage_rules_header do
@@ -314,18 +330,19 @@ if Code.ensure_loaded?(Igniter) do
       if igniter.assigns[:test_mode?] do
         igniter.rewrite.sources
         |> Enum.filter(fn {path, _source} ->
-          String.match?(path, ~r|^deps/[^/]+/usage-rules\.md$|)
+          String.match?(path, ~r|^deps/[^/]+/usage-rules\.md$|) ||
+            String.match?(path, ~r|^deps/[^/]+/usage-rules/[^/]+\.md$|)
         end)
         |> Enum.map(fn {path, _source} ->
-          # Extract package name from deps/package_name/usage-rules.md
+          # Extract package name from deps/package_name/usage-rules.md or deps/package_name/usage-rules/sub-rule.md
           package_name =
             path
             |> String.split("/")
             |> Enum.at(1)
             |> String.to_atom()
 
-          # Extract package path from deps/package_name/usage-rules.md
-          package_path = Path.dirname(path)
+          # Extract package path from deps/package_name/...
+          package_path = Path.join("deps", to_string(package_name))
 
           {package_name, package_path}
         end)
@@ -333,6 +350,118 @@ if Code.ensure_loaded?(Igniter) do
       else
         []
       end
+    end
+
+    defp parse_package_spec(package_spec) when is_binary(package_spec) do
+      case String.split(package_spec, ":", parts: 2) do
+        [package_name] ->
+          {String.to_atom(package_name), nil}
+
+        [package_name, sub_rule] ->
+          {String.to_atom(package_name), sub_rule}
+      end
+    end
+
+    defp find_available_sub_rules(igniter, package_path) do
+      usage_rules_dir = Path.join(package_path, "usage-rules")
+
+      if Igniter.exists?(igniter, usage_rules_dir) do
+        # In test mode, get from igniter sources
+        if igniter.assigns[:test_mode?] do
+          igniter.rewrite.sources
+          |> Enum.filter(fn {path, _source} ->
+            String.starts_with?(path, usage_rules_dir <> "/") &&
+              String.ends_with?(path, ".md")
+          end)
+          |> Enum.map(fn {path, _source} ->
+            path
+            |> Path.basename()
+            |> Path.rootname()
+          end)
+          |> Enum.sort()
+        else
+          # In normal mode, read from file system
+          case File.ls(usage_rules_dir) do
+            {:ok, files} ->
+              files
+              |> Enum.filter(&String.ends_with?(&1, ".md"))
+              |> Enum.map(&Path.rootname/1)
+              |> Enum.sort()
+
+            {:error, _} ->
+              []
+          end
+        end
+      else
+        []
+      end
+    end
+
+    defp parse_inline_specs(nil), do: []
+
+    defp parse_inline_specs(inline_string) do
+      inline_string
+      |> String.split(",")
+      |> Enum.map(&String.trim/1)
+      |> Enum.reject(&(&1 == ""))
+    end
+
+    defp should_inline_package?(package_name, sub_rule, inline_specs) do
+      package_name_str = to_string(package_name)
+
+      section_name =
+        case sub_rule do
+          nil -> package_name_str
+          sub_rule_name -> "#{package_name_str}:#{sub_rule_name}"
+        end
+
+      Enum.any?(inline_specs, fn inline_spec ->
+        case String.split(inline_spec, ":", parts: 2) do
+          [^package_name_str] when sub_rule == nil ->
+            true
+
+          [^package_name_str, "all"] ->
+            true
+
+          [^package_name_str, sub_rule_spec] when sub_rule == sub_rule_spec ->
+            true
+
+          [^section_name] ->
+            true
+
+          # Special case: "usage_rules:all" means inline all sub-rules
+          ["usage_rules", "all"] when sub_rule != nil ->
+            true
+
+          _ ->
+            false
+        end
+      end)
+    end
+
+    defp expand_wildcard_specs(igniter, all_deps, provided_packages) do
+      Enum.flat_map(provided_packages, fn package_spec ->
+        {package_name, sub_rule} = parse_package_spec(package_spec)
+
+        case sub_rule do
+          "all" ->
+            # Find the package path
+            case Enum.find(all_deps, fn {name, _path} -> name == package_name end) do
+              {_name, package_path} ->
+                available_sub_rules = find_available_sub_rules(igniter, package_path)
+
+                Enum.map(available_sub_rules, fn sub_rule_name ->
+                  "#{package_name}:#{sub_rule_name}"
+                end)
+
+              nil ->
+                [package_spec]
+            end
+
+          _ ->
+            [package_spec]
+        end
+      end)
     end
 
     defp add_usage_error(igniter) do
@@ -364,34 +493,60 @@ if Code.ensure_loaded?(Igniter) do
       """)
     end
 
-    defp handle_all_option(igniter, all_deps, link_to_folder, link_style, builtins, builtins_link) do
+    defp handle_all_option(
+           igniter,
+           all_deps,
+           link_to_folder,
+           link_style,
+           inline_specs,
+           remove_missing
+         ) do
       all_packages_with_rules = get_packages_with_usage_rules(igniter, all_deps)
+
+      # Discover all package rules including sub-rules
+      all_package_rules =
+        all_packages_with_rules
+        |> Enum.flat_map(fn {package_name, package_path} ->
+          # Check for main usage-rules.md file
+          main_rules =
+            if Igniter.exists?(igniter, Path.join(package_path, "usage-rules.md")) do
+              [{package_name, package_path, nil}]
+            else
+              []
+            end
+
+          # Check for sub-rules in usage_rules/ folder
+          sub_rules =
+            find_available_sub_rules(igniter, package_path)
+            |> Enum.map(fn sub_rule_name ->
+              {package_name, package_path, sub_rule_name}
+            end)
+
+          main_rules ++ sub_rules
+        end)
 
       igniter
       |> Igniter.add_notice(
         "Found #{length(all_packages_with_rules)} dependencies with usage rules"
       )
       |> then(fn igniter ->
-        Enum.reduce(all_packages_with_rules, igniter, fn {name, _path}, acc ->
-          Igniter.add_notice(acc, "Including usage rules for: #{name}")
+        Enum.reduce(all_package_rules, igniter, fn {name, _path, sub_rule}, acc ->
+          case sub_rule do
+            nil ->
+              Igniter.add_notice(acc, "Including usage rules for: #{name}")
+
+            sub_rule_name ->
+              Igniter.add_notice(acc, "Including usage rules for: #{name}:#{sub_rule_name}")
+          end
         end)
       end)
-      |> maybe_add_builtin_notices(builtins)
       |> generate_usage_rules_file(
-        all_packages_with_rules,
+        all_package_rules,
         link_to_folder,
         link_style,
-        builtins,
-        builtins_link
+        inline_specs,
+        remove_missing
       )
-    end
-
-    defp maybe_add_builtin_notices(igniter, []), do: igniter
-
-    defp maybe_add_builtin_notices(igniter, builtins) do
-      Enum.reduce(builtins, igniter, fn builtin, acc ->
-        Igniter.add_notice(acc, "Including built-in usage rules for: #{builtin}")
-      end)
     end
 
     defp handle_list_option(igniter, all_deps, link_to_folder) do
@@ -421,27 +576,55 @@ if Code.ensure_loaded?(Igniter) do
            provided_packages,
            link_to_folder,
            link_style,
-           builtins,
-           builtins_link
+           inline_specs,
+           remove_missing
          ) do
-      packages =
-        all_deps
-        |> Enum.filter(fn {name, _path} ->
-          to_string(name) in provided_packages
-        end)
-        |> Enum.flat_map(fn {name, path} ->
-          usage_rules_path = Path.join(path, "usage-rules.md")
+      # Expand wildcard specs first
+      expanded_packages = expand_wildcard_specs(igniter, all_deps, provided_packages)
 
-          if Igniter.exists?(igniter, usage_rules_path) do
-            [{name, path}]
-          else
-            []
+      # Parse and process each package spec
+      package_rules =
+        expanded_packages
+        |> Enum.flat_map(fn package_spec ->
+          {package_name, sub_rule} = parse_package_spec(package_spec)
+
+          case Enum.find(all_deps, fn {name, _path} -> name == package_name end) do
+            {_name, package_path} ->
+              case sub_rule do
+                nil ->
+                  # Standard package without sub-rule - check for usage-rules.md
+                  usage_rules_path = Path.join(package_path, "usage-rules.md")
+
+                  if Igniter.exists?(igniter, usage_rules_path) do
+                    [{package_name, package_path, nil}]
+                  else
+                    []
+                  end
+
+                sub_rule_name ->
+                  # Sub-rule specified - check for usage-rules/sub_rule.md
+                  sub_rule_path = Path.join([package_path, "usage-rules", "#{sub_rule_name}.md"])
+
+                  if Igniter.exists?(igniter, sub_rule_path) do
+                    [{package_name, package_path, sub_rule_name}]
+                  else
+                    []
+                  end
+              end
+
+            nil ->
+              []
           end
         end)
 
       igniter
-      |> maybe_add_builtin_notices(builtins)
-      |> generate_usage_rules_file(packages, link_to_folder, link_style, builtins, builtins_link)
+      |> generate_usage_rules_file(
+        package_rules,
+        link_to_folder,
+        link_style,
+        inline_specs,
+        remove_missing
+      )
     end
 
     defp handle_remove_packages(igniter, provided_packages, link_to_folder) do
@@ -458,7 +641,8 @@ if Code.ensure_loaded?(Igniter) do
       all_deps
       |> Enum.filter(fn {_name, path} ->
         usage_rules_path = Path.join(path, "usage-rules.md")
-        Igniter.exists?(igniter, usage_rules_path)
+        usage_rules_dir = Path.join(path, "usage-rules")
+        Igniter.exists?(igniter, usage_rules_path) || Igniter.exists?(igniter, usage_rules_dir)
       end)
     end
 
@@ -520,8 +704,8 @@ if Code.ensure_loaded?(Igniter) do
            packages,
            link_to_folder,
            link_style,
-           builtins,
-           builtins_link
+           inline_specs,
+           remove_missing
          ) do
       if link_to_folder do
         generate_usage_rules_with_folder_links(
@@ -529,19 +713,76 @@ if Code.ensure_loaded?(Igniter) do
           packages,
           link_to_folder,
           link_style,
-          builtins,
-          builtins_link
+          inline_specs,
+          remove_missing
         )
       else
-        generate_usage_rules_inline(igniter, packages, builtins)
+        generate_usage_rules_inline(igniter, packages, remove_missing)
       end
     end
 
-    defp generate_usage_rules_inline(igniter, packages, builtins) do
+    defp extract_existing_package_names(content) do
+      # Extract package names from <!-- package-name-start --> markers
+      Regex.scan(~r/<!-- ([^-]+(?::[^-]+)?)-start -->/, content, capture: :all_but_first)
+      |> Enum.map(fn [name] -> name end)
+    end
+
+    defp remove_missing_packages_from_content(content, packages_to_keep) do
+      existing_packages = extract_existing_package_names(content)
+      packages_to_remove = existing_packages -- packages_to_keep
+
+      Enum.reduce(packages_to_remove, content, fn package_name, acc ->
+        case String.split(acc, [
+               "<!-- #{package_name}-start -->\n",
+               "\n<!-- #{package_name}-end -->"
+             ]) do
+          [prelude, _, postlude] ->
+            # Remove the package section, keeping proper spacing
+            prelude <> postlude
+
+          _ ->
+            acc
+        end
+      end)
+    end
+
+    defp update_usage_rules_content(current_packages_contents, package_contents, remove_missing) do
+      # Apply remove_missing logic if requested
+      cleaned_content =
+        if remove_missing do
+          packages_to_keep = Enum.map(package_contents, fn {name, _} -> name end)
+          remove_missing_packages_from_content(current_packages_contents, packages_to_keep)
+        else
+          current_packages_contents
+        end
+
+      Enum.reduce(package_contents, cleaned_content, fn {name, package_content}, acc ->
+        case String.split(acc, [
+               "<!-- #{name}-start -->\n",
+               "\n<!-- #{name}-end -->"
+             ]) do
+          [prelude, _, postlude] ->
+            prelude <> package_content <> postlude
+
+          _ ->
+            acc <> "\n" <> package_content
+        end
+      end)
+    end
+
+    defp generate_usage_rules_inline(igniter, packages, remove_missing) do
       package_contents =
         packages
-        |> Enum.map(fn {name, path} ->
-          usage_rules_path = Path.join(path, "usage-rules.md")
+        |> Enum.map(fn {name, path, sub_rule} ->
+          {usage_rules_path, section_name} =
+            case sub_rule do
+              nil ->
+                {Path.join(path, "usage-rules.md"), to_string(name)}
+
+              sub_rule_name ->
+                {Path.join([path, "usage-rules", "#{sub_rule_name}.md"]),
+                 "#{name}:#{sub_rule_name}"}
+            end
 
           content =
             case Rewrite.source(igniter.rewrite, usage_rules_path) do
@@ -549,21 +790,24 @@ if Code.ensure_loaded?(Igniter) do
               {:error, _} -> File.read!(usage_rules_path)
             end
 
-          description = get_package_description(name)
+          description =
+            case sub_rule do
+              nil -> get_package_description(name)
+              # Sub-rules don't get package descriptions
+              _ -> ""
+            end
+
           description_part = if description == "", do: "", else: "_#{description}_\n\n"
 
-          {name,
-           "<!-- #{name}-start -->\n" <>
-             "## #{name} usage\n" <>
+          {section_name,
+           "<!-- #{section_name}-start -->\n" <>
+             "## #{section_name} usage\n" <>
              description_part <>
              content <>
-             "\n<!-- #{name}-end -->"}
+             "\n<!-- #{section_name}-end -->"}
         end)
 
-      builtin_contents = get_builtin_contents(builtins)
-
-      all_contents = package_contents ++ builtin_contents
-      all_rules_content = Enum.map_join(all_contents, "\n", &elem(&1, 1))
+      all_rules_content = Enum.map_join(package_contents, "\n", &elem(&1, 1))
 
       full_contents_for_new_file =
         "<!-- usage-rules-start -->\n" <>
@@ -585,19 +829,11 @@ if Code.ensure_loaded?(Igniter) do
                    "\n<!-- usage-rules-end -->"
                  ]) do
               [prelude, current_packages_contents, postlude] ->
-                Enum.reduce(all_contents, current_packages_contents, fn {name, package_content},
-                                                                        acc ->
-                  case String.split(acc, [
-                         "<!-- #{name}-start -->\n",
-                         "\n<!-- #{name}-end -->"
-                       ]) do
-                    [prelude, _, postlude] ->
-                      prelude <> package_content <> postlude
-
-                    _ ->
-                      acc <> "\n" <> package_content
-                  end
-                end)
+                update_usage_rules_content(
+                  current_packages_contents,
+                  package_contents,
+                  remove_missing
+                )
                 |> then(fn content ->
                   # Ensure header is present
                   content_with_header =
@@ -633,125 +869,122 @@ if Code.ensure_loaded?(Igniter) do
            packages,
            folder_name,
            link_style,
-           builtins,
-           builtins_link
+           inline_specs,
+           remove_missing
          ) do
       # Create individual files for each package in the folder (unless folder is "deps")
       igniter =
         if folder_name == "deps" do
           igniter
         else
-          # Create builtin files in the target folder only if builtins_link is true
-          igniter =
-            if builtins_link do
-              Enum.reduce(builtins, igniter, fn builtin, acc ->
-                builtin_source_path =
-                  Path.join([:code.priv_dir(:usage_rules), "builtins", "#{builtin}.md"])
-
-                builtin_file_path = Path.join(folder_name, "#{builtin}.md")
-                content = File.read!(builtin_source_path)
-
-                Igniter.create_or_update_file(
-                  acc,
-                  builtin_file_path,
-                  content,
-                  fn source ->
-                    Rewrite.Source.update(source, :content, content)
-                  end
-                )
-              end)
+          Enum.reduce(packages, igniter, fn {name, path, sub_rule}, acc ->
+            # Skip creating files for packages that should be inlined
+            if should_inline_package?(name, sub_rule, inline_specs) do
+              acc
             else
-              igniter
+              {usage_rules_path, target_file_name} =
+                case sub_rule do
+                  nil ->
+                    {Path.join(path, "usage-rules.md"), "#{name}.md"}
+
+                  sub_rule_name ->
+                    {Path.join([path, "usage-rules", "#{sub_rule_name}.md"]),
+                     "#{name}_#{sub_rule_name}.md"}
+                end
+
+              content =
+                case Rewrite.source(acc.rewrite, usage_rules_path) do
+                  {:ok, source} -> Rewrite.Source.get(source, :content)
+                  {:error, _} -> File.read!(usage_rules_path)
+                end
+
+              package_file_path = Path.join(folder_name, target_file_name)
+
+              Igniter.create_or_update_file(
+                acc,
+                package_file_path,
+                content,
+                fn source ->
+                  Rewrite.Source.update(source, :content, content)
+                end
+              )
+            end
+          end)
+        end
+
+      # Then, create the main file with links or inline content
+      package_contents =
+        packages
+        |> Enum.map(fn {name, path, sub_rule} ->
+          section_name =
+            case sub_rule do
+              nil -> to_string(name)
+              sub_rule_name -> "#{name}:#{sub_rule_name}"
             end
 
-          Enum.reduce(packages, igniter, fn {name, path}, acc ->
-            usage_rules_path = Path.join(path, "usage-rules.md")
+          description =
+            case sub_rule do
+              nil -> get_package_description(name)
+              # Sub-rules don't get package descriptions
+              _ -> ""
+            end
 
-            content =
-              case Rewrite.source(acc.rewrite, usage_rules_path) do
+          description_part = if description == "", do: "", else: "_#{description}_\n\n"
+
+          content =
+            if should_inline_package?(name, sub_rule, inline_specs) do
+              # Inline the actual content
+              {usage_rules_path, _} =
+                case sub_rule do
+                  nil ->
+                    {Path.join(path, "usage-rules.md"), "#{name}.md"}
+
+                  sub_rule_name ->
+                    {Path.join([path, "usage-rules", "#{sub_rule_name}.md"]),
+                     "#{name}_#{sub_rule_name}.md"}
+                end
+
+              case Rewrite.source(igniter.rewrite, usage_rules_path) do
                 {:ok, source} -> Rewrite.Source.get(source, :content)
                 {:error, _} -> File.read!(usage_rules_path)
               end
+            else
+              # Create link
+              case sub_rule do
+                nil ->
+                  case {link_style, folder_name} do
+                    {"at", "deps"} -> "@deps/#{name}/usage-rules.md"
+                    {"at", _} -> "@#{folder_name}/#{name}.md"
+                    {_, "deps"} -> "[#{name} usage rules](deps/#{name}/usage-rules.md)"
+                    _ -> "[#{name} usage rules](#{folder_name}/#{name}.md)"
+                  end
 
-            package_file_path = Path.join(folder_name, "#{name}.md")
+                sub_rule_name ->
+                  case {link_style, folder_name} do
+                    {"at", "deps"} ->
+                      "@deps/#{name}/usage-rules/#{sub_rule_name}.md"
 
-            Igniter.create_or_update_file(
-              acc,
-              package_file_path,
-              content,
-              fn source ->
-                Rewrite.Source.update(source, :content, content)
+                    {"at", _} ->
+                      "@#{folder_name}/#{name}_#{sub_rule_name}.md"
+
+                    {_, "deps"} ->
+                      "[#{section_name} usage rules](deps/#{name}/usage-rules/#{sub_rule_name}.md)"
+
+                    _ ->
+                      "[#{section_name} usage rules](#{folder_name}/#{name}_#{sub_rule_name}.md)"
+                  end
               end
-            )
-          end)
-        end
-
-      # Then, create the main file with links
-      package_contents =
-        packages
-        |> Enum.map(fn {name, _path} ->
-          link_content =
-            case {link_style, folder_name} do
-              {"at", "deps"} -> "@deps/#{name}/usage-rules.md"
-              {"at", _} -> "@#{folder_name}/#{name}.md"
-              {_, "deps"} -> "[#{name} usage rules](deps/#{name}/usage-rules.md)"
-              _ -> "[#{name} usage rules](#{folder_name}/#{name}.md)"
             end
 
-          description = get_package_description(name)
-          description_part = if description == "", do: "", else: "_#{description}_\n\n"
-
-          {name,
-           "<!-- #{name}-start -->\n" <>
-             "## #{name} usage\n" <>
+          {section_name,
+           "<!-- #{section_name}-start -->\n" <>
+             "## #{section_name} usage\n" <>
              description_part <>
-             link_content <>
-             "\n<!-- #{name}-end -->"}
+             content <>
+             "\n<!-- #{section_name}-end -->"}
         end)
 
-      builtin_contents =
-        if builtins_link do
-          # If builtins_link is true, create links
-          builtins
-          |> Enum.map(fn builtin ->
-            link_content =
-              case {link_style, folder_name} do
-                {"at", "deps"} ->
-                  "@deps/usage_rules/priv/builtins/#{builtin}.md"
-
-                {"at", _} ->
-                  "@#{folder_name}/#{builtin}.md"
-
-                {_, "deps"} ->
-                  "[#{builtin} usage rules](deps/usage_rules/priv/builtins/#{builtin}.md)"
-
-                _ ->
-                  "[#{builtin} usage rules](#{folder_name}/#{builtin}.md)"
-              end
-
-            description =
-              case builtin do
-                "elixir" -> "Core Elixir language features and standard library"
-                "otp" -> "OTP (Open Telecom Platform) behaviors and patterns"
-                _ -> ""
-              end
-
-            description_part = if description == "", do: "", else: "_#{description}_\n\n"
-
-            {String.to_atom(builtin),
-             "<!-- #{builtin}-start -->\n" <>
-               "## #{builtin} usage\n" <>
-               description_part <>
-               link_content <>
-               "\n<!-- #{builtin}-end -->"}
-          end)
-        else
-          # If builtins_link is false (default), inline the content
-          get_builtin_contents(builtins)
-        end
-
-      all_contents = package_contents ++ builtin_contents
-      all_rules_content = Enum.map_join(all_contents, "\n", &elem(&1, 1))
+      all_rules_content = Enum.map_join(package_contents, "\n", &elem(&1, 1))
 
       full_contents_for_new_file =
         "<!-- usage-rules-start -->\n" <>
@@ -773,19 +1006,11 @@ if Code.ensure_loaded?(Igniter) do
                    "\n<!-- usage-rules-end -->"
                  ]) do
               [prelude, current_packages_contents, postlude] ->
-                Enum.reduce(all_contents, current_packages_contents, fn {name, package_content},
-                                                                        acc ->
-                  case String.split(acc, [
-                         "<!-- #{name}-start -->\n",
-                         "\n<!-- #{name}-end -->"
-                       ]) do
-                    [prelude, _, postlude] ->
-                      prelude <> package_content <> postlude
-
-                    _ ->
-                      acc <> "\n" <> package_content
-                  end
-                end)
+                update_usage_rules_content(
+                  current_packages_contents,
+                  package_contents,
+                  remove_missing
+                )
                 |> then(fn content ->
                   # Ensure header is present
                   content_with_header =

@@ -57,8 +57,8 @@ if Code.ensure_loaded?(Igniter) do
         "--all",
         "--link-to-folder",
         "deps",
-        "--builtins",
-        "elixir,otp"
+        "--inline",
+        "usage_rules:all"
       ])
     end
   end

@@ -5,12 +5,14 @@
 ## Quickstart
 
 ```sh
-# swap AGENTS.md out for any file you like, e.g `CLAUDE.md`
+# install usage_rules into your project
+mix igniter.install usage_rules
 
+# swap AGENTS.md out for any file you like, e.g `CLAUDE.md`
 # sync projects as links to their usage rules
 # to save tokens. Agent can view them on demand
 mix usage_rules.sync AGENTS.md --all \
-  --builtins elixir,otp \
+  --inline usage_rules:all \
   --link-to-folder deps
 ```
 
@@ -31,6 +33,24 @@ We don't really know what makes great usage-rules.md files yet. Ash Framework is
 One quick tip is to have an agent begin the work of writing rules for you, by pointing it at your docs and asking it to write a `usage-rules.md` file in a condensed format that would be useful for agents to work with your tool. Then, aggressively prune and edit it to your taste.
 
 Make sure that your `usage-rules.md` file is included in your hex package's `files` option, so that it is distributed with your package.
+
+### Sub rules
+
+A package can have a `package-rules.md` and/or sub-rule files, each of which is referred to separately.
+For example:
+
+```
+package-rules.md # general rules
+package-rules/
+  html.md # html specific rules
+  database.md # database specific rules
+```
+
+When synchronizing, these are stated separately, like so:
+
+```
+mix usage_rules.sync AGENTS.md package package:html package:database
+```
 
 ## Key Features
 

@@ -1020,82 +1020,83 @@ defmodule Mix.Tasks.UsageRules.SyncTest do
     end
   end
 
-  describe "--builtins option" do
-    test "includes builtin elixir and otp rules with --all" do
+  describe "sub-rules functionality" do
+    test "includes specific sub-rule with package:rule syntax" do
       test_project(
         files: %{
-          "deps/ash/usage-rules.md" => "Ash framework rules"
+          "deps/ash/usage-rules.md" => "Main Ash rules",
+          "deps/ash/usage-rules/testing.md" => "Ash testing rules",
+          "deps/ash/usage-rules/deployment.md" => "Ash deployment rules"
         }
       )
-      |> Igniter.compose_task("usage_rules.sync", [
+      |> Igniter.compose_task("usage_rules.sync", ["rules.md", "ash:testing"])
+      |> assert_creates("rules.md")
+      |> assert_content_equals(
         "rules.md",
-        "--all",
-        "--builtins",
-        "elixir,otp"
-      ])
-      |> assert_has_notice("Including usage rules for: ash")
-      |> assert_has_notice("Including built-in usage rules for: elixir")
-      |> assert_has_notice("Including built-in usage rules for: otp")
-      |> assert_creates("rules.md")
+        """
+        <!-- usage-rules-start -->
+        <!-- usage-rules-header -->
+        # Usage Rules
+
+        **IMPORTANT**: Consult these usage rules early and often when working with the packages listed below. 
+        Before attempting to use any of these packages or to discover if you should use them, review their 
+        usage rules to understand the correct patterns, conventions, and best practices.
+        <!-- usage-rules-header-end -->
+
+        <!-- ash:testing-start -->
+        ## ash:testing usage
+        Ash testing rules
+        <!-- ash:testing-end -->
+        <!-- usage-rules-end -->
+        """
+        |> String.trim_trailing()
+      )
     end
 
-    test "includes only specified builtins" do
-      test_project()
-      |> Igniter.compose_task("usage_rules.sync", ["rules.md", "--all", "--builtins", "elixir"])
-      |> assert_has_notice("Including built-in usage rules for: elixir")
-      |> assert_creates("rules.md")
-    end
-
-    test "works with specific packages and builtins" do
+    test "includes multiple sub-rules from same package" do
       test_project(
         files: %{
-          "deps/ash/usage-rules.md" => "Ash framework rules"
+          "deps/ash/usage-rules/testing.md" => "Ash testing rules",
+          "deps/ash/usage-rules/deployment.md" => "Ash deployment rules"
         }
       )
-      |> Igniter.compose_task("usage_rules.sync", ["rules.md", "ash", "--builtins", "otp"])
-      |> assert_has_notice("Including built-in usage rules for: otp")
+      |> Igniter.compose_task("usage_rules.sync", ["rules.md", "ash:testing", "ash:deployment"])
       |> assert_creates("rules.md")
-    end
-
-    test "rejects invalid builtin names" do
-      igniter =
-        test_project()
-        |> Igniter.compose_task("usage_rules.sync", [
-          "rules.md",
-          "--all",
-          "--builtins",
-          "elixir,invalid,otp"
-        ])
-
-      case apply_igniter(igniter) do
-        {:error, [error_message]} ->
-          assert String.contains?(error_message, "Invalid builtins: invalid")
-          assert String.contains?(error_message, "Valid options are: elixir, otp")
-
-        result ->
-          flunk("Expected error, got: #{inspect(result)}")
-      end
-    end
-
-    test "works with --link-to-folder and copies builtin files" do
-      test_project(
-        files: %{
-          "deps/ash/usage-rules.md" => "Ash framework rules"
-        }
-      )
-      |> Igniter.compose_task("usage_rules.sync", [
+      |> assert_content_equals(
         "rules.md",
-        "ash",
-        "--builtins",
-        "elixir,otp",
-        "--link-to-folder",
-        "docs",
-        "--builtins-link"
-      ])
+        """
+        <!-- usage-rules-start -->
+        <!-- usage-rules-header -->
+        # Usage Rules
+
+        **IMPORTANT**: Consult these usage rules early and often when working with the packages listed below. 
+        Before attempting to use any of these packages or to discover if you should use them, review their 
+        usage rules to understand the correct patterns, conventions, and best practices.
+        <!-- usage-rules-header-end -->
+
+        <!-- ash:testing-start -->
+        ## ash:testing usage
+        Ash testing rules
+        <!-- ash:testing-end -->
+        <!-- ash:deployment-start -->
+        ## ash:deployment usage
+        Ash deployment rules
+        <!-- ash:deployment-end -->
+        <!-- usage-rules-end -->
+        """
+        |> String.trim_trailing()
+      )
+    end
+
+    test "includes both main package and sub-rules" do
+      test_project(
+        files: %{
+          "deps/ash/usage-rules.md" => "Main Ash rules",
+          "deps/ash/usage-rules/testing.md" => "Ash testing rules"
+        }
+      )
+      |> Igniter.compose_task("usage_rules.sync", ["rules.md", "ash", "ash:testing"])
       |> assert_creates("rules.md")
-      |> assert_creates("docs/ash.md")
-      |> assert_creates("docs/elixir.md")
-      |> assert_creates("docs/otp.md")
       |> assert_content_equals(
         "rules.md",
         """
@@ -1110,38 +1111,97 @@ defmodule Mix.Tasks.UsageRules.SyncTest do
 
         <!-- ash-start -->
         ## ash usage
-        [ash usage rules](docs/ash.md)
+        Main Ash rules
         <!-- ash-end -->
-        <!-- elixir-start -->
-        ## elixir usage
-        _Core Elixir language features and standard library_
-
-        [elixir usage rules](docs/elixir.md)
-        <!-- elixir-end -->
-        <!-- otp-start -->
-        ## otp usage
-        _OTP (Open Telecom Platform) behaviors and patterns_
-
-        [otp usage rules](docs/otp.md)
-        <!-- otp-end -->
+        <!-- ash:testing-start -->
+        ## ash:testing usage
+        Ash testing rules
+        <!-- ash:testing-end -->
         <!-- usage-rules-end -->
         """
         |> String.trim_trailing()
       )
-      |> assert_content_equals("docs/ash.md", "Ash framework rules")
     end
 
-    test "works with --link-to-folder deps and links to priv/builtins" do
+    test "expands wildcard package:all syntax" do
       test_project(
         files: %{
-          "deps/ash/usage-rules.md" => "Ash framework rules"
+          "deps/ash/usage-rules/testing.md" => "Ash testing rules",
+          "deps/ash/usage-rules/deployment.md" => "Ash deployment rules",
+          "deps/ash/usage-rules/performance.md" => "Ash performance rules"
+        }
+      )
+      |> Igniter.compose_task("usage_rules.sync", ["rules.md", "ash:all"])
+      |> assert_creates("rules.md")
+    end
+
+    test "--all includes both main rules and sub-rules" do
+      test_project(
+        files: %{
+          "deps/ash/usage-rules.md" => "Main Ash rules",
+          "deps/ash/usage-rules/testing.md" => "Ash testing rules",
+          "deps/phoenix/usage-rules.md" => "Phoenix rules",
+          "deps/phoenix/usage-rules/views.md" => "Phoenix views rules"
+        }
+      )
+      |> Igniter.compose_task("usage_rules.sync", ["rules.md", "--all"])
+      |> assert_creates("rules.md")
+    end
+
+    test "works with --link-to-folder for sub-rules" do
+      test_project(
+        files: %{
+          "deps/ash/usage-rules/testing.md" => "Ash testing rules",
+          "deps/ash/usage-rules/deployment.md" => "Ash deployment rules"
         }
       )
       |> Igniter.compose_task("usage_rules.sync", [
         "rules.md",
-        "ash",
-        "--builtins",
-        "elixir",
+        "ash:testing",
+        "ash:deployment",
+        "--link-to-folder",
+        "docs"
+      ])
+      |> assert_creates("rules.md")
+      |> assert_creates("docs/ash_testing.md")
+      |> assert_creates("docs/ash_deployment.md")
+      |> assert_content_equals("docs/ash_testing.md", "Ash testing rules")
+      |> assert_content_equals("docs/ash_deployment.md", "Ash deployment rules")
+      |> assert_content_equals(
+        "rules.md",
+        """
+        <!-- usage-rules-start -->
+        <!-- usage-rules-header -->
+        # Usage Rules
+
+        **IMPORTANT**: Consult these usage rules early and often when working with the packages listed below. 
+        Before attempting to use any of these packages or to discover if you should use them, review their 
+        usage rules to understand the correct patterns, conventions, and best practices.
+        <!-- usage-rules-header-end -->
+
+        <!-- ash:testing-start -->
+        ## ash:testing usage
+        [ash:testing usage rules](docs/ash_testing.md)
+        <!-- ash:testing-end -->
+        <!-- ash:deployment-start -->
+        ## ash:deployment usage
+        [ash:deployment usage rules](docs/ash_deployment.md)
+        <!-- ash:deployment-end -->
+        <!-- usage-rules-end -->
+        """
+        |> String.trim_trailing()
+      )
+    end
+
+    test "works with --link-to-folder deps for sub-rules" do
+      test_project(
+        files: %{
+          "deps/ash/usage-rules/testing.md" => "Ash testing rules"
+        }
+      )
+      |> Igniter.compose_task("usage_rules.sync", [
+        "rules.md",
+        "ash:testing",
         "--link-to-folder",
         "deps"
       ])
@@ -1158,137 +1218,294 @@ defmodule Mix.Tasks.UsageRules.SyncTest do
         usage rules to understand the correct patterns, conventions, and best practices.
         <!-- usage-rules-header-end -->
 
-        <!-- ash-start -->
-        ## ash usage
-        [ash usage rules](deps/ash/usage-rules.md)
-        <!-- ash-end -->
-        <!-- elixir-start -->
-        ## elixir usage
-        _Core Elixir language features and standard library_
-
-        # Elixir Core Usage Rules
-
-        ## Pattern Matching
-        - Use pattern matching over conditional logic when possible
-        - Prefer to match on function heads instead of using `if`/`else` or `case` in function bodies
-
-        ## Error Handling
-        - Use `{:ok, result}` and `{:error, reason}` tuples for operations that can fail
-        - Avoid raising exceptions for control flow
-        - Use `with` for chaining operations that return `{:ok, _}` or `{:error, _}`
-
-        ## Common Mistakes to Avoid
-        - Don't use `Enum` functions on large collections when `Stream` is more appropriate
-        - Avoid nested `case` statements - refactor to a single `case`, `with` or separate functions
-        - Don't use `String.to_atom/1` on user input (memory leak risk)
-        - Lists and enumerables cannot be indexed with brackets. Use pattern matching or `Enum` functions.
-        - Only use macros if explicitly requested
-
-        ## Function Design
-        - Use guard clauses: `when is_binary(name) and byte_size(name) > 0`
-        - Prefer multiple function clauses over complex conditional logic
-        - Name functions descriptively: `calculate_total_price/2` not `calc/2`
-
-        ## Data Structures
-        - Use structs over maps when the shape is known: `defstruct [:name, :age]`
-        - Prefer keyword lists for options: `[timeout: 5000, retries: 3]`
-        - Use maps for dynamic key-value data
-        - Prefer to prepend to lists `[new | list]` not `list ++ [new]`
-
-        ## Testing
-        - Run tests in a specific file with `mix test test/my_test.exs` and a specific test 
-          with the line number `mix test path/to/test.exs:123`
-        - Limit the number of failed tests with `mix test --max-failures n`
-        - Use `@tag` to tag specific tests, and `mix test --only tag` to run only those tests
-        - Use `assert_raise` for testing expected exceptions: `assert_raise ArgumentError, fn -> invalid_function() end`
-
-        <!-- elixir-end -->
+        <!-- ash:testing-start -->
+        ## ash:testing usage
+        [ash:testing usage rules](deps/ash/usage-rules/testing.md)
+        <!-- ash:testing-end -->
         <!-- usage-rules-end -->
         """
         |> String.trim_trailing()
       )
     end
 
-    test "works with @-style links for builtins" do
-      test_project()
+    test "sub-rules do not get package descriptions" do
+      test_project(
+        files: %{
+          "deps/ash/usage-rules.md" => "Main Ash rules",
+          "deps/ash/usage-rules/testing.md" => "Ash testing rules"
+        }
+      )
+      |> Igniter.compose_task("usage_rules.sync", ["rules.md", "ash", "ash:testing"])
+      |> assert_creates("rules.md")
+    end
+
+    test "only main package name still works for packages with sub-rules" do
+      test_project(
+        files: %{
+          "deps/ash/usage-rules.md" => "Main Ash rules",
+          "deps/ash/usage-rules/testing.md" => "Ash testing rules"
+        }
+      )
+      |> Igniter.compose_task("usage_rules.sync", ["rules.md", "ash"])
+      |> assert_creates("rules.md")
+    end
+  end
+
+  describe "--inline option" do
+    test "README scenario: mix usage_rules.sync AGENTS.md --all --inline usage_rules:all --link-to-folder deps" do
+      test_project(
+        files: %{
+          "deps/ash/usage-rules.md" => "Main Ash rules",
+          "deps/ash/usage-rules/testing.md" => "Ash testing rules",
+          "deps/ash/usage-rules/deployment.md" => "Ash deployment rules",
+          "deps/phoenix/usage-rules.md" => "Phoenix rules",
+          "deps/phoenix/usage-rules/views.md" => "Phoenix views rules"
+        }
+      )
+      |> Igniter.compose_task("usage_rules.sync", [
+        "AGENTS.md",
+        "--all",
+        "--inline",
+        "usage_rules:all",
+        "--link-to-folder",
+        "deps"
+      ])
+      |> assert_creates("AGENTS.md")
+    end
+
+    test "inline specific packages while linking others" do
+      test_project(
+        files: %{
+          "deps/ash/usage-rules.md" => "Main Ash rules",
+          "deps/ash/usage-rules/testing.md" => "Ash testing rules",
+          "deps/phoenix/usage-rules.md" => "Phoenix rules"
+        }
+      )
       |> Igniter.compose_task("usage_rules.sync", [
         "rules.md",
-        "--all",
-        "--builtins",
-        "otp",
+        "ash",
+        "ash:testing",
+        "phoenix",
+        "--inline",
+        "ash:testing",
         "--link-to-folder",
-        "rules",
-        "--link-style",
-        "at",
-        "--builtins-link"
+        "docs"
       ])
       |> assert_creates("rules.md")
-      |> assert_creates("rules/otp.md")
-      |> assert_content_equals(
-        "rules.md",
-        """
-        <!-- usage-rules-start -->
-        <!-- usage-rules-header -->
-        # Usage Rules
-
-        **IMPORTANT**: Consult these usage rules early and often when working with the packages listed below. 
-        Before attempting to use any of these packages or to discover if you should use them, review their 
-        usage rules to understand the correct patterns, conventions, and best practices.
-        <!-- usage-rules-header-end -->
-
-        <!-- otp-start -->
-        ## otp usage
-        _OTP (Open Telecom Platform) behaviors and patterns_
-
-        @rules/otp.md
-        <!-- otp-end -->
-        <!-- usage-rules-end -->
-        """
-        |> String.trim_trailing()
-      )
+      |> assert_creates("docs/ash.md")
+      |> assert_creates("docs/phoenix.md")
+      # Should not create file for inlined package
+      |> refute_creates("docs/ash_testing.md")
+      |> assert_content_equals("docs/ash.md", "Main Ash rules")
+      |> assert_content_equals("docs/phoenix.md", "Phoenix rules")
     end
+  end
 
-    test "updates existing file with builtins" do
+  describe "--remove-missing option" do
+    test "removes packages not listed when used with specific packages" do
       test_project(
         files: %{
           "rules.md" => """
-          # Existing Rules
+          # My Rules
 
           <!-- usage-rules-start -->
           <!-- ash-start -->
           ## ash usage
-          Old ash content
+          Ash framework rules
           <!-- ash-end -->
+          <!-- phoenix-start -->
+          ## phoenix usage
+          Phoenix web framework rules
+          <!-- phoenix-end -->
+          <!-- ecto-start -->
+          ## ecto usage
+          Ecto database rules
+          <!-- ecto-end -->
           <!-- usage-rules-end -->
 
           More content.
           """,
-          "deps/ash/usage-rules.md" => "New ash content"
+          "deps/ash/usage-rules.md" => "Ash framework rules",
+          "deps/phoenix/usage-rules.md" => "Phoenix web framework rules"
         }
       )
-      |> Igniter.compose_task("usage_rules.sync", ["rules.md", "ash", "--builtins", "elixir"])
-      |> assert_has_patch("rules.md", """
-      + | <!-- elixir-start -->
+      |> Igniter.compose_task("usage_rules.sync", [
+        "rules.md",
+        "ash",
+        "phoenix",
+        "--remove-missing"
+      ])
+      |> assert_content_equals("rules.md", """
+      # My Rules
+
+      <!-- usage-rules-start -->
+      <!-- usage-rules-header -->
+      # Usage Rules
+
+      **IMPORTANT**: Consult these usage rules early and often when working with the packages listed below. 
+      Before attempting to use any of these packages or to discover if you should use them, review their 
+      usage rules to understand the correct patterns, conventions, and best practices.
+      <!-- usage-rules-header-end -->
+
+      <!-- ash-start -->
+      ## ash usage
+      Ash framework rules
+      <!-- ash-end -->
+      <!-- phoenix-start -->
+      ## phoenix usage
+      Phoenix web framework rules
+      <!-- phoenix-end -->
+
+      <!-- usage-rules-end -->
+
+      More content.
       """)
     end
 
-    test "handles empty builtins string" do
-      test_project()
-      |> Igniter.compose_task("usage_rules.sync", ["rules.md", "--all", "--builtins", ""])
-      |> assert_creates("rules.md")
+    test "removes packages not listed when used with --all" do
+      test_project(
+        files: %{
+          "rules.md" => """
+          # My Rules
+
+          <!-- usage-rules-start -->
+          <!-- ash-start -->
+          ## ash usage
+          Ash framework rules
+          <!-- ash-end -->
+          <!-- phoenix-start -->
+          ## phoenix usage
+          Phoenix web framework rules
+          <!-- phoenix-end -->
+          <!-- old_package-start -->
+          ## old_package usage
+          Old package rules
+          <!-- old_package-end -->
+          <!-- usage-rules-end -->
+
+          More content.
+          """,
+          "deps/ash/usage-rules.md" => "Ash framework rules",
+          "deps/phoenix/usage-rules.md" => "Phoenix web framework rules"
+        }
+      )
+      |> Igniter.compose_task("usage_rules.sync", ["rules.md", "--all", "--remove-missing"])
+      |> assert_content_equals("rules.md", """
+      # My Rules
+
+      <!-- usage-rules-start -->
+      <!-- usage-rules-header -->
+      # Usage Rules
+
+      **IMPORTANT**: Consult these usage rules early and often when working with the packages listed below. 
+      Before attempting to use any of these packages or to discover if you should use them, review their 
+      usage rules to understand the correct patterns, conventions, and best practices.
+      <!-- usage-rules-header-end -->
+
+      <!-- ash-start -->
+      ## ash usage
+      Ash framework rules
+      <!-- ash-end -->
+      <!-- phoenix-start -->
+      ## phoenix usage
+      Phoenix web framework rules
+      <!-- phoenix-end -->
+
+      <!-- usage-rules-end -->
+
+      More content.
+      """)
     end
 
-    test "ignores duplicate builtins" do
-      test_project()
+    test "removes sub-rules not listed when using --remove-missing" do
+      test_project(
+        files: %{
+          "rules.md" => """
+          # My Rules
+
+          <!-- usage-rules-start -->
+          <!-- ash:testing-start -->
+          ## ash:testing usage
+          Ash testing rules
+          <!-- ash:testing-end -->
+          <!-- ash:deployment-start -->
+          ## ash:deployment usage
+          Ash deployment rules
+          <!-- ash:deployment-end -->
+          <!-- phoenix:views-start -->
+          ## phoenix:views usage
+          Phoenix views rules
+          <!-- phoenix:views-end -->
+          <!-- usage-rules-end -->
+
+          More content.
+          """,
+          "deps/ash/usage-rules/testing.md" => "Ash testing rules",
+          "deps/phoenix/usage-rules/views.md" => "Phoenix views rules"
+        }
+      )
       |> Igniter.compose_task("usage_rules.sync", [
         "rules.md",
-        "--all",
-        "--builtins",
-        "elixir,elixir,otp"
+        "ash:testing",
+        "phoenix:views",
+        "--remove-missing"
       ])
-      |> assert_has_notice("Including built-in usage rules for: elixir")
-      |> assert_has_notice("Including built-in usage rules for: otp")
-      |> assert_creates("rules.md")
+      |> assert_content_equals("rules.md", """
+      # My Rules
+
+      <!-- usage-rules-start -->
+      <!-- usage-rules-header -->
+      # Usage Rules
+
+      **IMPORTANT**: Consult these usage rules early and often when working with the packages listed below. 
+      Before attempting to use any of these packages or to discover if you should use them, review their 
+      usage rules to understand the correct patterns, conventions, and best practices.
+      <!-- usage-rules-header-end -->
+
+      <!-- ash:testing-start -->
+      ## ash:testing usage
+      Ash testing rules
+      <!-- ash:testing-end -->
+
+      <!-- phoenix:views-start -->
+      ## phoenix:views usage
+      Phoenix views rules
+      <!-- phoenix:views-end -->
+      <!-- usage-rules-end -->
+
+      More content.
+      """)
+    end
+
+    test "requires a file when using --remove-missing" do
+      igniter =
+        test_project()
+        |> Igniter.compose_task("usage_rules.sync", ["--remove-missing"])
+
+      case apply_igniter(igniter) do
+        {:error, [error_message]} ->
+          assert String.contains?(
+                   error_message,
+                   "--remove-missing option requires a file to modify"
+                 )
+
+        result ->
+          flunk("Expected error, got: #{inspect(result)}")
+      end
+    end
+
+    test "cannot use --remove-missing with --list" do
+      igniter =
+        test_project()
+        |> Igniter.compose_task("usage_rules.sync", ["rules.md", "--list", "--remove-missing"])
+
+      case apply_igniter(igniter) do
+        {:error, [error_message]} ->
+          assert String.contains?(error_message, "Cannot use --remove-missing with --list option")
+
+        result ->
+          flunk("Expected error, got: #{inspect(result)}")
+      end
     end
   end
 end
