@@ -285,7 +285,7 @@ if Code.ensure_loaded?(Igniter) do
       file = igniter.args.positional[:file]
 
       if all_option do
-        Igniter.add_notice(igniter, """
+        Igniter.add_warning(igniter, """
         Usage Rules:
 
         We've synchronized usage rules for all of your direct
@@ -380,7 +380,7 @@ if Code.ensure_loaded?(Igniter) do
         |> Enum.sort()
 
       # If we found sub-rules in sources, return them
-      if not Enum.empty?(source_sub_rules) do
+      if Enum.any?(source_sub_rules) do
         source_sub_rules
       else
         # Otherwise, try file system
@@ -699,7 +699,7 @@ if Code.ensure_loaded?(Igniter) do
 
         # Add sub-rules status if any
         message_parts =
-          if not Enum.empty?(sub_rules) do
+          if Enum.any?(sub_rules) do
             sub_rule_lines =
               sub_rules
               |> Enum.filter(fn sub_rule_name ->
@@ -735,7 +735,7 @@ if Code.ensure_loaded?(Igniter) do
           end
 
         # Add the combined notice if we have anything to show
-        if not Enum.empty?(message_parts) do
+        if Enum.any?(message_parts) do
           # For file comparison, don't add the standalone package name
           full_message = Enum.join([name | Enum.reverse(message_parts)], "\n")
           Igniter.add_notice(acc, full_message)
@@ -768,7 +768,7 @@ if Code.ensure_loaded?(Igniter) do
 
         # Add sub-rules lines if they exist
         lines =
-          if not Enum.empty?(available_sub_rules) do
+          if Enum.any?(available_sub_rules) do
             valid_sub_rules =
               available_sub_rules
               |> Enum.filter(fn sub_rule_name ->
@@ -788,7 +788,7 @@ if Code.ensure_loaded?(Igniter) do
           end
 
         # Add notice for this package if we have anything to show
-        if not Enum.empty?(lines) do
+        if Enum.any?(lines) do
           message = Enum.join([package_name | Enum.reverse(lines)], "\n")
           Igniter.add_notice(acc, message)
         else
