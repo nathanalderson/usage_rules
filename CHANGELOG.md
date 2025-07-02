@@ -5,6 +5,21 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## v0.1.15 (2025-07-02)
+
+
+
+
+### Improvements:
+
+* support sub-rules, in a usage-rules folder by Zach Daniel
+
+* add --remove-missing option by Zach Daniel
+
+* add notice when using --all about the dangers of it by Zach Daniel
+
+* update usage rules for Elixir by Zach Daniel
+
 ## [Unreleased]
 
 ### Features:
