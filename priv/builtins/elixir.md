@@ -13,8 +13,12 @@
 - Don't use `Enum` functions on large collections when `Stream` is more appropriate
 - Avoid nested `case` statements - refactor to a single `case`, `with` or separate functions
 - Don't use `String.to_atom/1` on user input (memory leak risk)
-- Lists and enumerables cannot be indexed with brackets. Use pattern matching or `Enum` functions.
+- Lists and enumerables cannot be indexed with brackets. Use pattern matching or `Enum` functions
+- Prefer `Enum` functions like `Enum.reduce` over recursion
+- When recursion is necessary, prefer to use pattern matching in function heads for base case detection
+- Using the process dictionary is typically a sign of unidiomatic code
 - Only use macros if explicitly requested
+- There are many useful standard library functions, prefer to use them where possible
 
 ## Function Design
 - Use guard clauses: `when is_binary(name) and byte_size(name) > 0`
