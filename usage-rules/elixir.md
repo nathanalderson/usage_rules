@@ -24,12 +24,20 @@
 - Use guard clauses: `when is_binary(name) and byte_size(name) > 0`
 - Prefer multiple function clauses over complex conditional logic
 - Name functions descriptively: `calculate_total_price/2` not `calc/2`
+- Predicate function names should not start with `is` and should end in a question mark. 
+- Names like `is_thing` should be reserved for guards
 
 ## Data Structures
 - Use structs over maps when the shape is known: `defstruct [:name, :age]`
 - Prefer keyword lists for options: `[timeout: 5000, retries: 3]`
 - Use maps for dynamic key-value data
 - Prefer to prepend to lists `[new | list]` not `list ++ [new]`
+
+## Mix Tasks
+
+- Use `mix help` to list available mix tasks
+- Use `mix help task_name` to get docs for an individual task
+- Read the docs and options fully before using tasks
 
 ## Testing
 - Run tests in a specific file with `mix test test/my_test.exs` and a specific test 

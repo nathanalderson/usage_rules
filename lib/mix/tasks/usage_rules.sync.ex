@@ -264,7 +264,7 @@ if Code.ensure_loaded?(Igniter) do
 
         # Handle --list option
         list_option ->
-          handle_list_option(igniter, all_deps, link_to_folder)
+          handle_list_option(igniter, all_deps, link_to_folder, link_style, inline_specs)
 
         # Handle specific packages
         true ->
@@ -365,35 +365,35 @@ if Code.ensure_loaded?(Igniter) do
     defp find_available_sub_rules(igniter, package_path) do
       usage_rules_dir = Path.join(package_path, "usage-rules")
 
-      if Igniter.exists?(igniter, usage_rules_dir) do
-        # In test mode, get from igniter sources
-        if igniter.assigns[:test_mode?] do
-          igniter.rewrite.sources
-          |> Enum.filter(fn {path, _source} ->
-            String.starts_with?(path, usage_rules_dir <> "/") &&
-              String.ends_with?(path, ".md")
-          end)
-          |> Enum.map(fn {path, _source} ->
-            path
-            |> Path.basename()
-            |> Path.rootname()
-          end)
-          |> Enum.sort()
-        else
-          # In normal mode, read from file system
-          case File.ls(usage_rules_dir) do
-            {:ok, files} ->
-              files
-              |> Enum.filter(&String.ends_with?(&1, ".md"))
-              |> Enum.map(&Path.rootname/1)
-              |> Enum.sort()
+      # Try to find sub-rules from igniter sources first (works in both test and regular mode)
+      source_sub_rules =
+        igniter.rewrite.sources
+        |> Enum.filter(fn {path, _source} ->
+          String.starts_with?(path, usage_rules_dir <> "/") &&
+            String.ends_with?(path, ".md")
+        end)
+        |> Enum.map(fn {path, _source} ->
+          path
+          |> Path.basename()
+          |> Path.rootname()
+        end)
+        |> Enum.sort()
 
-            {:error, _} ->
-              []
-          end
-        end
+      # If we found sub-rules in sources, return them
+      if not Enum.empty?(source_sub_rules) do
+        source_sub_rules
       else
-        []
+        # Otherwise, try file system
+        case File.ls(usage_rules_dir) do
+          {:ok, files} ->
+            files
+            |> Enum.filter(&String.ends_with?(&1, ".md"))
+            |> Enum.map(&Path.rootname/1)
+            |> Enum.sort()
+
+          {:error, _} ->
+            []
+        end
       end
     end
 
@@ -549,7 +549,7 @@ if Code.ensure_loaded?(Igniter) do
       )
     end
 
-    defp handle_list_option(igniter, all_deps, link_to_folder) do
+    defp handle_list_option(igniter, all_deps, link_to_folder, link_style, inline_specs) do
       packages_with_rules = get_packages_with_usage_rules(igniter, all_deps)
 
       if Enum.empty?(packages_with_rules) do
@@ -562,7 +562,9 @@ if Code.ensure_loaded?(Igniter) do
             igniter,
             packages_with_rules,
             file_path,
-            link_to_folder
+            link_to_folder,
+            link_style,
+            inline_specs
           )
         else
           list_packages_without_comparison(igniter, packages_with_rules)
@@ -638,11 +640,13 @@ if Code.ensure_loaded?(Igniter) do
     end
 
     defp get_packages_with_usage_rules(igniter, all_deps) do
-      all_deps
-      |> Enum.filter(fn {_name, path} ->
-        usage_rules_path = Path.join(path, "usage-rules.md")
-        usage_rules_dir = Path.join(path, "usage-rules")
-        Igniter.exists?(igniter, usage_rules_path) || Igniter.exists?(igniter, usage_rules_dir)
+      Enum.filter(all_deps, fn
+        {_name, path} when is_binary(path) and path != "" ->
+          Igniter.exists?(igniter, Path.join(path, "usage-rules.md")) ||
+            Igniter.exists?(igniter, Path.join(path, "usage-rules"))
+
+        _ ->
+          false
       end)
     end
 
@@ -650,35 +654,146 @@ if Code.ensure_loaded?(Igniter) do
            igniter,
            packages_with_rules,
            file_path,
-           link_to_folder
+           link_to_folder,
+           link_style,
+           inline_specs
          ) do
       current_file_content = read_current_file_content(igniter, file_path)
 
       Enum.reduce(packages_with_rules, igniter, fn {name, path}, acc ->
-        usage_rules_path = Path.join(path, "usage-rules.md")
+        # Ensure name is a string
+        name = to_string(name)
 
-        package_rules_content =
-          case Rewrite.source(acc.rewrite, usage_rules_path) do
-            {:ok, source} -> Rewrite.Source.get(source, :content)
-            {:error, _} -> File.read!(usage_rules_path)
+        # Check for main package and sub-rules
+        usage_rules_path = Path.join(path, "usage-rules.md")
+        has_main = Igniter.exists?(acc, usage_rules_path)
+        sub_rules = find_available_sub_rules(igniter, path)
+
+        # Build the notice message
+        message_parts = []
+
+        # Add main package status if exists
+        message_parts =
+          if has_main do
+            package_rules_content =
+              case Rewrite.source(acc.rewrite, usage_rules_path) do
+                {:ok, source} -> Rewrite.Source.get(source, :content)
+                {:error, _} -> File.read!(usage_rules_path)
+              end
+
+            status =
+              get_package_status_in_file(
+                acc,
+                name,
+                package_rules_content,
+                current_file_content,
+                link_to_folder,
+                link_style,
+                inline_specs
+              )
+
+            ["  #{name} - #{colorize_status(status)}" | message_parts]
+          else
+            message_parts
           end
 
-        status =
-          get_package_status_in_file(
-            acc,
-            name,
-            package_rules_content,
-            current_file_content,
-            link_to_folder
-          )
+        # Add sub-rules status if any
+        message_parts =
+          if not Enum.empty?(sub_rules) do
+            sub_rule_lines =
+              sub_rules
+              |> Enum.filter(fn sub_rule_name ->
+                sub_rule_path = Path.join([path, "usage-rules", "#{sub_rule_name}.md"])
+                Igniter.exists?(acc, sub_rule_path)
+              end)
+              |> Enum.map(fn sub_rule_name ->
+                sub_rule_path = Path.join([path, "usage-rules", "#{sub_rule_name}.md"])
 
-        Igniter.add_notice(acc, "#{name}: #{colorize_status(status)}")
+                sub_rule_content =
+                  case Rewrite.source(acc.rewrite, sub_rule_path) do
+                    {:ok, source} -> Rewrite.Source.get(source, :content)
+                    {:error, _} -> File.read!(sub_rule_path)
+                  end
+
+                sub_status =
+                  get_package_status_in_file(
+                    acc,
+                    "#{name}:#{sub_rule_name}",
+                    sub_rule_content,
+                    current_file_content,
+                    link_to_folder,
+                    link_style,
+                    inline_specs
+                  )
+
+                "  #{name}:#{sub_rule_name} - #{colorize_status(sub_status)}"
+              end)
+
+            message_parts ++ sub_rule_lines
+          else
+            message_parts
+          end
+
+        # Add the combined notice if we have anything to show
+        if not Enum.empty?(message_parts) do
+          # For file comparison, don't add the standalone package name
+          full_message = Enum.join([name | Enum.reverse(message_parts)], "\n")
+          Igniter.add_notice(acc, full_message)
+        else
+          acc
+        end
       end)
     end
 
     defp list_packages_without_comparison(igniter, packages_with_rules) do
-      Enum.reduce(packages_with_rules, igniter, fn {name, _path}, acc ->
-        Igniter.add_notice(acc, "#{name}: #{IO.ANSI.green()}has usage rules#{IO.ANSI.reset()}")
+      Enum.reduce(packages_with_rules, igniter, fn {package_name, package_path}, acc ->
+        # Ensure name is a string
+        package_name = to_string(package_name)
+
+        # Check for main package and sub-rules
+        usage_rules_path = Path.join(package_path, "usage-rules.md")
+        has_main = Igniter.exists?(acc, usage_rules_path)
+        available_sub_rules = find_available_sub_rules(igniter, package_path)
+
+        # Build message lines for this specific package
+        lines = []
+
+        # Add main package line if it exists
+        lines =
+          if has_main do
+            ["  #{package_name} - #{IO.ANSI.green()}has usage rules#{IO.ANSI.green()}"] ++ lines
+          else
+            lines
+          end
+
+        # Add sub-rules lines if they exist
+        lines =
+          if not Enum.empty?(available_sub_rules) do
+            valid_sub_rules =
+              available_sub_rules
+              |> Enum.filter(fn sub_rule_name ->
+                sub_rule_path = Path.join([package_path, "usage-rules", "#{sub_rule_name}.md"])
+                Igniter.exists?(acc, sub_rule_path)
+              end)
+              |> Enum.sort()
+
+            sub_rule_lines =
+              Enum.map(valid_sub_rules, fn sub_rule_name ->
+                "  #{package_name}:#{sub_rule_name} - #{IO.ANSI.green()}has sub-rule#{IO.ANSI.green()}"
+              end)
+
+            lines ++ sub_rule_lines
+          else
+            lines
+          end
+
+        # Add notice for this package if we have anything to show
+        if not Enum.empty?(lines) do
+          message = Enum.join([package_name | Enum.reverse(lines)], "\n")
+          Igniter.add_notice(acc, message)
+        else
+          acc
+        end
       end)
     end
 
@@ -1133,7 +1248,9 @@ if Code.ensure_loaded?(Igniter) do
            name,
            package_rules_content,
            file_content,
-           link_to_folder
+           link_to_folder,
+           link_style,
+           inline_specs
          ) do
       package_start_marker = "<!-- #{name}-start -->"
       package_end_marker = "<!-- #{name}-end -->"
@@ -1141,9 +1258,49 @@ if Code.ensure_loaded?(Igniter) do
       case String.split(file_content, [package_start_marker, package_end_marker]) do
         [_, current_package_content, _] ->
           # Package is present in file, check if content matches
+          {package_name, sub_rule} =
+            case String.split(name, ":", parts: 2) do
+              [l, r] -> {l, r}
+              [l] -> {l, nil}
+            end
+
           expected_content =
-            if link_to_folder do
-              "\n## #{name} usage\n@#{link_to_folder}/#{name}.md\n"
+            if link_to_folder && !should_inline_package?(package_name, sub_rule, inline_specs) do
+              # Generate the correct link format based on link_style
+              link_content =
+                case sub_rule do
+                  nil ->
+                    case {link_style, link_to_folder} do
+                      {"at", "deps"} ->
+                        "@deps/#{package_name}/usage-rules.md"
+
+                      {"at", _} ->
+                        "@#{link_to_folder}/#{package_name}.md"
+
+                      {_, "deps"} ->
+                        "[#{package_name} usage rules](deps/#{package_name}/usage-rules.md)"
+
+                      _ ->
+                        "[#{package_name} usage rules](#{link_to_folder}/#{package_name}.md)"
+                    end
+
+                  sub_rule_name ->
+                    case {link_style, link_to_folder} do
+                      {"at", "deps"} ->
+                        "@deps/#{package_name}/usage-rules/#{sub_rule_name}.md"
+
+                      {"at", _} ->
+                        "@#{link_to_folder}/#{package_name}_#{sub_rule_name}.md"
+
+                      {_, "deps"} ->
+                        "[#{name} usage rules](deps/#{package_name}/usage-rules/#{sub_rule_name}.md)"
+
+                      _ ->
+                        "[#{name} usage rules](#{link_to_folder}/#{package_name}_#{sub_rule_name}.md)"
+                    end
+                end
+
+              "\n## #{name} usage\n#{link_content}\n"
             else
               "\n## #{name} usage\n" <> package_rules_content <> "\n"
             end
@@ -1166,7 +1323,30 @@ if Code.ensure_loaded?(Igniter) do
     end
 
     defp check_linked_file_status(igniter, name, expected_content, link_to_folder) do
-      linked_file_path = Path.join(link_to_folder, "#{name}.md")
+      # Generate the correct file path based on package name and sub-rule
+      {package_name, sub_rule} =
+        case String.split(name, ":", parts: 2) do
+          [l, r] -> {l, r}
+          [l] -> {l, nil}
+        end
+
+      linked_file_path =
+        case sub_rule do
+          nil ->
+            case link_to_folder do
+              "deps" -> Path.join(["deps", package_name, "usage-rules.md"])
+              _ -> Path.join(link_to_folder, "#{package_name}.md")
+            end
+
+          sub_rule_name ->
+            case link_to_folder do
+              "deps" ->
+                Path.join(["deps", package_name, "usage-rules", "#{sub_rule_name}.md"])
+
+              _ ->
+                Path.join(link_to_folder, "#{package_name}_#{sub_rule_name}.md")
+            end
+        end
 
       if Igniter.exists?(igniter, linked_file_path) do
         actual_content =
@@ -1192,9 +1372,9 @@ if Code.ensure_loaded?(Igniter) do
       end
     end
 
-    defp colorize_status("present"), do: "#{IO.ANSI.green()}present#{IO.ANSI.reset()}"
-    defp colorize_status("stale"), do: "#{IO.ANSI.yellow()}stale#{IO.ANSI.reset()}"
-    defp colorize_status("missing"), do: "#{IO.ANSI.red()}missing#{IO.ANSI.reset()}"
+    defp colorize_status("present"), do: "#{IO.ANSI.green()}present#{IO.ANSI.green()}"
+    defp colorize_status("stale"), do: "#{IO.ANSI.yellow()}stale#{IO.ANSI.green()}"
+    defp colorize_status("missing"), do: "#{IO.ANSI.red()}missing#{IO.ANSI.green()}"
   end
 else
   defmodule Mix.Tasks.UsageRules.Sync do
