@@ -83,8 +83,7 @@ to those from you rules file.
 
 ```sh
 mix usage_rules.sync AGENTS.md --all \
-  --link-to-folder deps \
-  --builtins elixir,otp
+  --link-to-folder deps
 ```
 
 #### Using deps folder

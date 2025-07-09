@@ -14,6 +14,8 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 * support sub-rules, in a usage-rules folder by Zach Daniel
 
+* remove --builtins option
+
 * add --remove-missing option by Zach Daniel
 
 * add notice when using --all about the dangers of it by Zach Daniel
