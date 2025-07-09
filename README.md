@@ -83,7 +83,8 @@ to those from you rules file.
 
 ```sh
 mix usage_rules.sync AGENTS.md --all \
-  --link-to-folder deps
+  --link-to-folder deps \
+  --inline usage_rules:all
 ```
 
 #### Using deps folder
