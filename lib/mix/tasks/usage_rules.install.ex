@@ -46,14 +46,24 @@ if Code.ensure_loaded?(Igniter) do
     def igniter(igniter) do
       igniter
       |> Igniter.add_notice("""
-        `usage_rules` is installed!
+      Usage Rules: Sync usage rules for the packages you use.
 
-        Example sync commands:
-        - `mix usage_rules.sync AGENTS.md --all --link-to-folder rules --inline usage_rules:all`
-        - `mix usage_rules.sync RULES.md --all`
+      Suggested starting point to sync all usage rules:
 
-        For more info and examples: `mix help usage_rules.sync`
-        """)
+          mix usage_rules.sync AGENTS.md --all \
+            --inline usage_rules:all \
+            --link-to-folder deps
+
+      Or sync only a specific set, copying their rules to a
+      specific folder
+
+          mix usage_rules.sync AGENTS.md \
+            ash ash_postgres \
+            --link-to-folder rules
+
+
+      For more ineo and examples: `mix help usage_rules.sync`
+      """)
     end
   end
 else
