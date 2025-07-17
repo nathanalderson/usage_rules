@@ -5,6 +5,15 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## v0.1.21 (2025-07-17)
+
+
+
+
+### Improvements:
+
+* only show notice about local docs when module is compiled by Zach Daniel
+
 ## v0.1.20 (2025-07-17)
 
 
