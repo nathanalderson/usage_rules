@@ -83,6 +83,8 @@ defmodule UsageRules.MixProject do
 
   defp deps do
     [
+      {:req, "~> 0.5"},
+      {:jason, "~> 1.0"},
       {:igniter, "~> 0.6 and >= 0.6.6", optional: true},
       # dev dependencies
       {:ex_doc, "~> 0.37-rc", only: [:dev, :test], runtime: false},
