@@ -65,6 +65,9 @@ defmodule Mix.Tasks.UsageRules.SearchDocs do
         opts[:package] not in [nil, []] ->
           filter_from_packages(opts[:package])
 
+        !Mix.Project.config()[:app] ->
+          nil
+
         true ->
           filter_from_mix_lock()
       end
@@ -139,6 +142,8 @@ defmodule Mix.Tasks.UsageRules.SearchDocs do
 
     #{format_navigation_help_markdown(term, current_page, total_pages, opts)}
 
+    #{format_search_scope_info(opts)}
+
     ---
 
     """
@@ -154,7 +159,28 @@ defmodule Mix.Tasks.UsageRules.SearchDocs do
         format_search_result_markdown(hit, actual_index, current_page, per_page)
       end)
 
-    header <> results
+    docs_hint =
+      try do
+        term
+        |> Code.string_to_quoted!()
+      rescue
+        _ ->
+          nil
+      end
+      |> IEx.Introspection.decompose(__ENV__)
+      |> case do
+        :error ->
+          ""
+
+        _ ->
+          """
+          For module or function docs in the current app, run:
+
+              mix usage_rules.docs #{term}
+          """
+      end
+
+    header <> results <> docs_hint
   end
 
   defp format_search_result_markdown(hit, index, current_page, per_page) do
@@ -204,7 +230,7 @@ defmodule Mix.Tasks.UsageRules.SearchDocs do
 
     footer = """
 
-    📖 **View full documentation:**  
+    **full docs:**
     https://hexdocs.pm/#{extract_package_name(package)}/#{ref}
 
     ---
@@ -220,6 +246,23 @@ defmodule Mix.Tasks.UsageRules.SearchDocs do
     |> String.replace("<mark>", "\e[38;5;208m")
     # Reset color
     |> String.replace("</mark>", "\e[0m")
+  end
+
+  defp format_search_scope_info(opts) do
+    cond do
+      opts[:everywhere] ->
+        "**Searching:** All packages on hex.pm"
+
+      opts[:package] not in [nil, []] ->
+        packages = opts[:package] |> Enum.join(", ")
+        "**Searching:** #{packages}"
+
+      !Mix.Project.config()[:app] ->
+        "**Searching:** All packages on hex.pm"
+
+      true ->
+        "**Searching:** Dependencies from current mix project"
+    end
   end
 
   defp format_navigation_help_markdown(term, current_page, total_pages, opts) do
@@ -295,6 +338,8 @@ defmodule Mix.Tasks.UsageRules.SearchDocs do
   end
 
   defp filter_from_mix_lock do
+    Mix.Task.run("compile")
+
     apps =
       if apps_paths = Mix.Project.apps_paths() do
         Enum.filter(Mix.Project.deps_apps(), &is_map_key(apps_paths, &1))

@@ -7,7 +7,8 @@ They are your best source of knowledge for making decisions.
 ## Searching Documentation
 
 You should also consult the documentation of any tools you are using, early and often. The best 
-way to accomplish this is to use the `usage_rules.search_docs` mix task. For example:
+way to accomplish this is to use the `usage_rules.search_docs` mix task. Once you have
+found what you are looking for, use the links in the search results to get more detail. For example:
 
 ```
 # Search docs for all packages in the current application, including Elixir
@@ -21,8 +22,18 @@ mix usage_rules.search_docs "making requests" -p req
 
 # Search only in titles (useful for finding specific functions/modules)
 mix usage_rules.search_docs "Enum.zip" --query-by title
+```
 
-# Search by title only
-mix usage_rules.search_docs "validation" --query-by "title"
+## Modules & functions in the current app and dependencies
+
+```
+# Search a whole module
+mix usage_rules.docs Enum
+
+# Search a specific function
+mix usage_rules.docs Enum.zip
+
+# Search a specific function & arity
+mix usage_rules.docs Enum.zip/1
 ```
 
