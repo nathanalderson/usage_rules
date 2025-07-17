@@ -5,6 +5,15 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## v0.1.19 (2025-07-17)
+
+
+
+
+### Improvements:
+
+* add --query-by option to mix task by Zach Daniel
+
 ## v0.1.18 (2025-07-17)
 
 
