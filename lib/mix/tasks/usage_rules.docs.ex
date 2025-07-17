@@ -90,4 +90,3 @@ defmodule Mix.Tasks.UsageRules.Docs do
     """)
   end
 end
-
