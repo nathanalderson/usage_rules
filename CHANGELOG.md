@@ -5,6 +5,15 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## v0.1.17 (2025-07-17)
+
+
+
+
+### Improvements:
+
+* replace auto-sync with notice (#12) by andyl
+
 ## v0.1.16 (2025-07-10)
 
 
