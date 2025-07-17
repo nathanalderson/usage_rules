@@ -1,6 +1,10 @@
 # UsageRules
 
-**UsageRules** is a development tool for Elixir projects that helps gather and consolidate usage rules from dependencies. The package provides Mix tasks to collect documentation from dependencies that have `usage-rules.md` files and combine them into a single rules file for your project.
+**UsageRules** is a development tool for Elixir projects that:
+
+- helps gather and consolidate usage rules from dependencies to provide to LLM agents via `mix usage_rules.sync`
+- provides pre-built usage rules for Elixir
+- provides a powerful documentation search task for hexdocs with `mix usage_rules.search_docs`
 
 ## Quickstart
 
@@ -58,6 +62,7 @@ mix usage_rules.sync AGENTS.md package package:html package:database
 2. **Rules Consolidation**: Combines multiple package rules into a single file with proper sectioning and markers
 3. **Status Tracking**: Can list dependencies with usage rules and check if your consolidated file is up-to-date
 4. **Selective Management**: Allows adding/removing specific packages from your rules file
+5. **Documentation Search**: Search hexdocs with human-readable markdown output using `mix usage_rules.search_docs` - designed to help AI agents find relevant documentation
 
 ## How It Works
 
@@ -141,6 +146,27 @@ mix usage_rules.sync CLAUDE.md ash phoenix --link-to-folder deps
 ### Gather all dependencies with folder links
 ```sh
 mix usage_rules.sync CLAUDE.md --all --link-to-folder docs
+```
+
+### Documentation Search (`mix usage_rules.search_docs`)
+
+The `mix usage_rules.search_docs` task searches hexdocs with human-readable markdown output, specifically designed to help AI agents find relevant documentation.
+
+```sh
+# Search documentation for all dependencies in the current mix project
+mix usage_rules.search_docs "search term"
+
+# Search documentation for specific packages 
+mix usage_rules.search_docs "search term" -p ecto -p ash
+
+# Search documentation for specific versions 
+mix usage_rules.search_docs "search term" -p ecto@3.13.2 -p ash@3.5.26
+
+# Control output format and pagination
+mix usage_rules.search_docs "search term" --output json --page 2 --per-page 20
+
+# Search across all packages on hex
+mix usage_rules.search_docs "search term" --everywhere
 ```
 
 ## Advanced Features
