@@ -172,15 +172,33 @@ defmodule Mix.Tasks.UsageRules.SearchDocs do
         :error ->
           ""
 
-        _ ->
-          """
-          For module or function docs in the current app, run:
+        other ->
+          show? =
+            case other do
+              {{:__aliases__, _, parts}, _} -> compiled?(parts)
+              {:{}, [], [{:__aliases__, _, parts}, _, _]} -> compiled?(parts)
+              {:__aliases__, _, parts} -> compiled?(parts)
+              _ -> false
+            end
 
-              mix usage_rules.docs #{term}
-          """
+          if show? do
+            """
+            For local docs, run:
+
+                mix usage_rules.docs #{term}
+            """
+          else
+            ""
+          end
       end
 
     header <> results <> docs_hint
+  end
+
+  defp compiled?(parts) do
+    parts
+    |> Module.concat()
+    |> Code.ensure_loaded?()
   end
 
   defp format_search_result_markdown(hit, index, current_page, per_page) do
