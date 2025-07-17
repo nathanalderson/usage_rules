@@ -10,6 +10,7 @@
 - Use `with` for chaining operations that return `{:ok, _}` or `{:error, _}`
 
 ## Common Mistakes to Avoid
+- Elixir has no `return` statement, nor early returns. The last expression in a block is always returned.
 - Don't use `Enum` functions on large collections when `Stream` is more appropriate
 - Avoid nested `case` statements - refactor to a single `case`, `with` or separate functions
 - Don't use `String.to_atom/1` on user input (memory leak risk)
