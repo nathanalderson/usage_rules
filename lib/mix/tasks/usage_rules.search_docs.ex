@@ -38,6 +38,13 @@ defmodule Mix.Tasks.UsageRules.SearchDocs do
     {opts, args} = OptionParser.parse!(args, strict: @switches, aliases: @aliases)
     opts = Keyword.put(opts, :mix_project, !!Mix.Project.get())
 
+    opts =
+      if opts[:package] do
+        Keyword.put(opts, :package, Keyword.get_values(opts, :package))
+      else
+        opts
+      end
+
     term =
       case args do
         ["-" <> _ | _] -> raise_bad_args!()
