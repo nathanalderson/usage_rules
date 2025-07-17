@@ -50,15 +50,15 @@ if Code.ensure_loaded?(Igniter) do
 
       Suggested starting point to sync all usage rules:
 
-          mix usage_rules.sync AGENTS.md --all \
-            --inline usage_rules:all \
+          mix usage_rules.sync AGENTS.md --all \\
+            --inline usage_rules:all \\
             --link-to-folder deps
 
       Or sync only a specific set, copying their rules to a
       specific folder
 
-          mix usage_rules.sync AGENTS.md \
-            ash ash_postgres \
+          mix usage_rules.sync AGENTS.md \\
+            ash ash_postgres \\
             --link-to-folder rules
 
 
