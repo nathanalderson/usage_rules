@@ -1,5 +1,6 @@
 defmodule Mix.Tasks.UsageRules.SearchDocs do
   use Mix.Task
+  # This will eventually be replaced with something like `mix hex.docs.search` ideally
 
   @shortdoc "Searches hexdocs with human-readable output"
 
@@ -133,14 +134,13 @@ defmodule Mix.Tasks.UsageRules.SearchDocs do
     # Results - reverse order in TTY for better readability
     results =
       hits
-      |> (if tty?(), do: &Enum.reverse/1, else: &Function.identity/1).()
+      |> if(tty?(), do: &Enum.reverse/1, else: &Function.identity/1).()
       |> Enum.with_index(1)
-      |> Enum.map(fn {hit, index} ->
+      |> Enum.map_join("\n", fn {hit, index} ->
         # Adjust index calculation for reversed results
         actual_index = if tty?(), do: length(hits) - index + 1, else: index
         format_search_result_markdown(hit, actual_index, current_page, per_page)
       end)
-      |> Enum.join("\n")
 
     header <> results
   end
@@ -176,10 +176,10 @@ defmodule Mix.Tasks.UsageRules.SearchDocs do
       highlights
       # Limit to 2 highlights to avoid clutter
       |> Enum.take(2)
-      |> Enum.map(fn highlight ->
+      |> Enum.map_join("\n\n", fn highlight ->
         snippet = highlight["snippet"]
         field = highlight["field"]
-        
+
         # Convert <mark> tags to ANSI orange highlighting for TTY
         snippet_display = if tty?(), do: convert_mark_tags_to_ansi(snippet), else: snippet
 
@@ -189,7 +189,6 @@ defmodule Mix.Tasks.UsageRules.SearchDocs do
           _ -> "**#{String.capitalize(field)}:** #{snippet_display}"
         end
       end)
-      |> Enum.join("\n\n")
 
     footer = """
 
@@ -205,8 +204,10 @@ defmodule Mix.Tasks.UsageRules.SearchDocs do
 
   defp convert_mark_tags_to_ansi(text) do
     text
-    |> String.replace("<mark>", "\e[38;5;208m")  # Orange color
-    |> String.replace("</mark>", "\e[0m")        # Reset color
+    # Orange color
+    |> String.replace("<mark>", "\e[38;5;208m")
+    # Reset color
+    |> String.replace("</mark>", "\e[0m")
   end
 
   defp format_navigation_help_markdown(term, current_page, total_pages, opts) do
@@ -296,10 +297,9 @@ defmodule Mix.Tasks.UsageRules.SearchDocs do
         Application.spec(app, :applications)
       end)
       |> Enum.uniq()
-      |> Enum.map(fn app ->
+      |> Enum.map_join(", ", fn app ->
         "#{app}-#{Application.spec(app, :vsn)}"
       end)
-      |> Enum.join(", ")
 
     "package:=[#{filter}]"
   end
@@ -352,6 +352,7 @@ defmodule Mix.Tasks.UsageRules.SearchDocs do
       false
   end
 
+  @spec raise_bad_args!() :: no_return()
   defp raise_bad_args! do
     Mix.raise("""
     Must provide a search term. For example:
