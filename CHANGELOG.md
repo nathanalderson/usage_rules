@@ -5,6 +5,21 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## v0.1.18 (2025-07-17)
+
+
+
+
+### Improvements:
+
+* add `usage_rules.search_docs` task by Zach Daniel
+
+* instruct agents to use the new task by Zach Daniel
+
+* explain about no early returns in usage rules by Zach Daniel
+
+* add a note on early returns not being a thing in usage-rules.md by Zach Daniel
+
 ## v0.1.17 (2025-07-17)
 
 
