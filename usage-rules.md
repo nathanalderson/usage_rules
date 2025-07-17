@@ -18,5 +18,11 @@ mix usage_rules.search_docs Req.get -p req
 
 # Search docs for multi-word queries
 mix usage_rules.search_docs "making requests" -p req
+
+# Search only in titles (useful for finding specific functions/modules)
+mix usage_rules.search_docs "Enum.zip" --query-by title
+
+# Search by title only
+mix usage_rules.search_docs "validation" --query-by "title"
 ```
 

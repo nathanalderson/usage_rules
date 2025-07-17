@@ -167,6 +167,12 @@ mix usage_rules.search_docs "search term" --output json --page 2 --per-page 20
 
 # Search across all packages on hex
 mix usage_rules.search_docs "search term" --everywhere
+
+# Search only in titles (useful for finding specific functions/modules)
+mix usage_rules.search_docs "Enum.zip" --query-by title
+
+# Search in specific fields (available: doc, title, type)
+mix usage_rules.search_docs "validation" --query-by "doc,title"
 ```
 
 ## Advanced Features

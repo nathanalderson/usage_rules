@@ -19,6 +19,10 @@ defmodule Mix.Tasks.UsageRules.SearchDocs do
       $ mix usage_rules.search_docs "search term" --output json --page 2 --per-page 20
   ## Search across all packages on hex
       $ mix usage_rules.search_docs "search term" --everywhere
+  ## Search only in titles
+      $ mix usage_rules.search_docs "search term" --query-by title
+  ## Search in specific fields
+      $ mix usage_rules.search_docs "search term" --query-by "doc,title,type"
   """
 
   @switches [
@@ -26,9 +30,10 @@ defmodule Mix.Tasks.UsageRules.SearchDocs do
     page: :integer,
     per_page: :integer,
     output: :string,
-    everywhere: :boolean
+    everywhere: :boolean,
+    query_by: :string
   ]
-  @aliases [p: :package, o: :output, e: :everywhere]
+  @aliases [p: :package, o: :output, e: :everywhere, q: :query_by]
 
   require Logger
 
@@ -67,7 +72,7 @@ defmodule Mix.Tasks.UsageRules.SearchDocs do
     query_params =
       %{
         q: term,
-        query_by: "doc,title",
+        query_by: opts[:query_by] || "doc,title",
         page: opts[:page] || 1,
         per_page: opts[:per_page] || 10
       }
