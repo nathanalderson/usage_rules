@@ -31,7 +31,8 @@ defmodule UsageRules.MixProject do
       name: :usage_rules,
       licenses: ["MIT"],
       maintainers: "Zach Daniel",
-      files: ~w(lib .formatter.exs mix.exs README* LICENSE* CHANGELOG* usage-rules),
+      files:
+        ~w(lib .formatter.exs mix.exs README* LICENSE* CHANGELOG* usage-rules usage-rules.md),
       links: %{
         "GitHub" => @source_url,
         "Discord" => "https://discord.gg/HTHRaaVPUc",
