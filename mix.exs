@@ -86,7 +86,8 @@ defmodule UsageRules.MixProject do
     [
       {:req, "~> 0.5"},
       {:jason, "~> 1.0"},
-      {:igniter, "~> 0.6 and >= 0.6.6", optional: true},
+      # not an optional dependency, because *this package* is itself a dev dependency
+      {:igniter, "~> 0.6 and >= 0.6.6"},
       # dev dependencies
       {:ex_doc, "~> 0.37-rc", only: [:dev, :test], runtime: false},
       {:ex_check, "~> 0.12", only: [:dev, :test]},
