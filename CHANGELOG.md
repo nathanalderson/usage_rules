@@ -5,6 +5,21 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## v0.1.22 (2025-07-19)
+
+
+
+
+### Bug Fixes:
+
+* make igniter not an optional dependency, but a normal one by Zach Daniel
+
+### Improvements:
+
+* show `mix help test` in testing usage rules by Zach Daniel
+
+* add a debugging header to elixir usage rules by Zach Daniel
+
 ## v0.1.21 (2025-07-17)
 
 
