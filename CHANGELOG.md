@@ -5,6 +5,15 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## v0.1.23 (2025-07-22)
+
+
+
+
+### Bug Fixes:
+
+* trim trailing application descriptions by Zach Daniel
+
 ## v0.1.22 (2025-07-19)
 
 
