@@ -322,7 +322,7 @@ if Code.ensure_loaded?(Igniter) do
     defp get_package_description(name) do
       case Application.spec(name, :description) do
         nil -> ""
-        desc -> Sring.trim_trailing(to_string(desc))
+        desc -> String.trim_trailing(to_string(desc))
       end
     end
 
