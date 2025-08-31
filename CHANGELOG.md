@@ -5,6 +5,19 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## v0.1.24 (2025-08-31)
+
+
+
+
+### Bug Fixes:
+
+* typo in OTP usage rules (#22) by Hubert Pompecki
+
+### Improvements:
+
+* Add warning about %{} pattern matching (#23) by jlgeering
+
 ## v0.1.23 (2025-07-22)
 
 
