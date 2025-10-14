@@ -12,6 +12,21 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## v0.1.25 (2025-10-14)
+
+
+
+
+### Bug Fixes:
+
+* use AGENTS.md consistently in task help (#28) by Lars Wikman
+
+### Improvements:
+
+* Impl `supports_umbrella?` (#33) by Wigny
+
+* Add ability to extract one or more usage rules to folder without modifying any files. (#29) by olivermt
+
 ## v0.1.24 (2025-08-31)
 
 
